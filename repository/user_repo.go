@@ -66,8 +66,14 @@ func (r *UserRepository) List(page, pageSize int) ([]models.AppUser, int64, erro
 	return users, total, err
 }
 
-// AddCreditCoin 增加信用积分
+// AddCreditCoin 增加信用金币
 func (r *UserRepository) AddCreditCoin(userID uint64, amount int) error {
 	return r.db.Model(&models.AppUser{}).Where("id = ?", userID).
 		UpdateColumn("credit_coin", gorm.Expr("credit_coin + ?", amount)).Error
+}
+
+// DivCreditCoin 减少信用分
+func (r *UserRepository) DivCreditCoin(userID uint64, amount int) error {
+	return r.db.Model(&models.AppUser{}).Where("id = ?", userID).
+		UpdateColumn("credit_score", gorm.Expr("credit_score - ?", amount)).Error
 }

@@ -29,7 +29,7 @@ func NewJWTConfig(secret string) *JWTConfig {
 		SecretKey:       secret,
 		AccessTokenExp:  2 * time.Hour,      // 访问令牌 2 小时
 		RefreshTokenExp: 7 * 24 * time.Hour, // 刷新令牌 7 天
-		Issuer:          "community-app",
+		Issuer:          "school-platform-app",
 	}
 }
 

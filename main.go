@@ -19,7 +19,7 @@ import (
 )
 
 // @title           sp_backend API
-// @version         1.0
+// @version         1.1
 // @description     社区平台 API 文档，包含用户、帖子、委托等功能
 // @termsOfService  http://swagger.io/terms/
 
@@ -72,6 +72,7 @@ func main() {
 
 	userRepo := repository.NewUserRepository(db)
 	authHandler := handlers.NewAuthHandler(userRepo, jwtConfig)
+	userHandler := handlers.NewUserHandler(userRepo, jwtConfig)
 	appRouter := server.Group("/app")
 
 	authRouter := appRouter.Group("/auth")
@@ -83,6 +84,12 @@ func main() {
 
 	protectedRouter := appRouter.Group("")
 	protectedRouter.Use(middleware.OptionalAuth(jwtConfig))
+
+	userRouter := protectedRouter.Group("/user")
+	{
+		userRouter.GET("/get-info", userHandler.GetInfo) // @Tags 用户
+		userRouter.POST("/edit", userHandler.Edit)       // @Tags 用户
+	}
 
 	server.Run(":8080")
 }
