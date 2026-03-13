@@ -1,0 +1,188 @@
+basePath: /app
+definitions:
+  handlers.ErrorResponse:
+    properties:
+      error:
+        example: invalid request
+        type: string
+      message:
+        example: 详细错误信息
+        type: string
+    type: object
+  handlers.LoginRequest:
+    properties:
+      password:
+        type: string
+      username:
+        type: string
+    required:
+    - password
+    - username
+    type: object
+  handlers.LoginResponse:
+    properties:
+      access_token:
+        type: string
+      expires_in:
+        description: (多少秒token过期)
+        type: integer
+      refresh_token:
+        type: string
+    type: object
+  handlers.RefreshRequest:
+    properties:
+      refresh_token:
+        type: string
+    required:
+    - refresh_token
+    type: object
+  handlers.RefreshResponse:
+    properties:
+      access_token:
+        type: string
+      expires_in:
+        type: integer
+    type: object
+  handlers.RegisterRequest:
+    properties:
+      email:
+        type: string
+      password:
+        minLength: 6
+        type: string
+      username:
+        maxLength: 20
+        minLength: 3
+        type: string
+    required:
+    - email
+    - password
+    - username
+    type: object
+  handlers.RegisterResponse:
+    properties:
+      access_token:
+        type: string
+      message:
+        type: string
+      refresh_token:
+        type: string
+      user_id:
+        type: integer
+    type: object
+externalDocs:
+  description: OpenAPI
+  url: https://swagger.io/resources/open-api/
+host: localhost:8080
+info:
+  contact:
+    email: bishop9910@163.com
+    name: API Support
+  description: 社区平台 API 文档，包含用户、帖子、委托等功能
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: sp_backend API
+  version: "1.0"
+paths:
+  /app/auth/login:
+    post:
+      consumes:
+      - application/json
+      description: 使用用户名和密码获取访问令牌
+      parameters:
+      - description: 登录信息
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.LoginResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 用户登录
+      tags:
+      - 认证
+  /app/auth/refresh:
+    post:
+      consumes:
+      - application/json
+      description: 刷新过时token
+      parameters:
+      - description: 刷新信息
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.RefreshRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/handlers.RefreshResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 用户token刷新
+      tags:
+      - 认证
+  /app/auth/register:
+    post:
+      consumes:
+      - application/json
+      description: 创建新用户账号
+      parameters:
+      - description: 注册信息
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/handlers.RegisterResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 用户注册
+      tags:
+      - 认证
+schemes:
+- http
+- https
+securityDefinitions:
+  BearerAuth:
+    description: 请输入 "Bearer <token>"，例如：Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
