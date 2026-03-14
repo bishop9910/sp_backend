@@ -161,7 +161,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/app/avatar/{filename}": {
+        "/app/files/avatar/{filename}": {
             "get": {
                 "description": "通过文件名访问头像图片，禁止路径遍历和目录列表",
                 "produces": [
@@ -220,7 +220,7 @@ const docTemplate = `{
                 "summary": "上传用户头像",
                 "parameters": [
                     {
-                        "description": "上传用户头像表单",
+                        "description": "上传用户自己头像表单",
                         "name": "request",
                         "in": "body",
                         "required": true,
@@ -234,6 +234,52 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/handlers.UploadAvatarResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/app/uploads/avatar-other": {
+            "post": {
+                "description": "上传用户头像",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "头像"
+                ],
+                "summary": "上传用户头像",
+                "parameters": [
+                    {
+                        "description": "上传其他用户头像表单",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.UploadOtherAvatarRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.UploadOtherAvatarResponse"
                         }
                     },
                     "400": {
@@ -297,6 +343,52 @@ const docTemplate = `{
                 }
             }
         },
+        "/app/user/edit-other": {
+            "post": {
+                "description": "除了ID和用户名和密码和头像(不在这里改)改不了其他都能改",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "用户"
+                ],
+                "summary": "修改别的用户的信息",
+                "parameters": [
+                    {
+                        "description": "修改其他用户数值信息",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.EditOtherRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.EditOtherResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/app/user/get-info": {
             "get": {
                 "description": "用于获取用户信息",
@@ -334,35 +426,36 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "enums.Gender": {
-            "type": "integer",
-            "enum": [
-                0,
-                1,
-                2
-            ],
-            "x-enum-comments": {
-                "GenderFemale": "2",
-                "GenderMale": "1",
-                "GenderUnknown": "0"
-            },
-            "x-enum-descriptions": [
-                "0",
-                "1",
-                "2"
-            ],
-            "x-enum-varnames": [
-                "GenderUnknown",
-                "GenderMale",
-                "GenderFemale"
-            ]
-        },
         "handlers.AvatarData": {
             "type": "object",
             "properties": {
                 "url": {
                     "type": "string",
                     "example": "/avatars/xxxx.png"
+                }
+            }
+        },
+        "handlers.EditOtherRequest": {
+            "type": "object",
+            "properties": {
+                "key": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "integer"
+                },
+                "value": {}
+            }
+        },
+        "handlers.EditOtherResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                },
+                "success": {
+                    "type": "boolean",
+                    "example": true
                 }
             }
         },
@@ -430,9 +523,12 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "gender": {
-                    "$ref": "#/definitions/enums.Gender"
+                    "type": "string"
                 },
                 "nickname": {
+                    "type": "string"
+                },
+                "permission": {
                     "type": "string"
                 },
                 "signature": {
@@ -580,7 +676,25 @@ const docTemplate = `{
             }
         },
         "handlers.UploadAvatarRequest": {
-            "description": "头像上传请求参数",
+            "type": "object"
+        },
+        "handlers.UploadAvatarResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/handlers.AvatarData"
+                },
+                "message": {
+                    "type": "string",
+                    "example": "头像上传成功"
+                },
+                "success": {
+                    "type": "boolean",
+                    "example": true
+                }
+            }
+        },
+        "handlers.UploadOtherAvatarRequest": {
             "type": "object",
             "properties": {
                 "user_id": {
@@ -590,8 +704,7 @@ const docTemplate = `{
                 }
             }
         },
-        "handlers.UploadAvatarResponse": {
-            "description": "头像上传响应",
+        "handlers.UploadOtherAvatarResponse": {
             "type": "object",
             "properties": {
                 "data": {
@@ -624,7 +737,7 @@ const docTemplate = `{
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "1.2",
+	Version:          "1.2.1",
 	Host:             "localhost:8080",
 	BasePath:         "/app",
 	Schemes:          []string{"http", "https"},

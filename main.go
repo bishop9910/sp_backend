@@ -21,7 +21,7 @@ import (
 )
 
 // @title           sp_backend API
-// @version         1.2
+// @version         1.2.1
 // @description     社区平台 API 文档，包含用户、帖子、委托等功能
 // @termsOfService  http://swagger.io/terms/
 
@@ -79,7 +79,7 @@ func main() {
 	userRepo := repository.NewUserRepository(db)
 	authHandler := handlers.NewAuthHandler(userRepo, jwtConfig)
 	userHandler := handlers.NewUserHandler(userRepo, jwtConfig)
-	avatarHandler := handlers.NewAvatarHandler(userRepo)
+	avatarHandler := handlers.NewAvatarHandler(userRepo, jwtConfig)
 
 	appRouter := server.Group("/app")
 
@@ -91,21 +91,24 @@ func main() {
 	}
 
 	protectedRouter := appRouter.Group("")
-	protectedRouter.Use(middleware.OptionalAuth(jwtConfig))
-
-	{
-		protectedRouter.GET("/avatar/:filename", avatarHandler.AvatarsHandler) // @Tags 头像
-	}
+	protectedRouter.Use(middleware.RequiredAuth(jwtConfig))
 
 	userRouter := protectedRouter.Group("/user")
 	{
-		userRouter.GET("/get-info", userHandler.GetInfo) // @Tags 用户
-		userRouter.POST("/edit", userHandler.Edit)       // @Tags 用户
+		userRouter.GET("/get-info", userHandler.GetInfo)      // @Tags 用户
+		userRouter.POST("/edit", userHandler.Edit)            // @Tags 用户
+		userRouter.POST("/edit-other", userHandler.EditOther) // @Tags 用户
 	}
 
 	uploadRouter := protectedRouter.Group("/uploads")
 	{
-		uploadRouter.POST("/avatar", avatarHandler.UploadAvatar) // @Tags 头像
+		uploadRouter.POST("/avatar", avatarHandler.UploadAvatar)            // @Tags 头像
+		uploadRouter.POST("/avatar-other", avatarHandler.UploadOtherAvatar) // @Tags 头像
+	}
+
+	fileRouter := protectedRouter.Group("/files")
+	{
+		fileRouter.GET("/avatar/:filename", avatarHandler.AvatarsHandler) // @Tags 头像
 	}
 
 	server.Run(":8080")

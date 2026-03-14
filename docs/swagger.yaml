@@ -1,28 +1,26 @@
 basePath: /app
 definitions:
-  enums.Gender:
-    enum:
-    - 0
-    - 1
-    - 2
-    type: integer
-    x-enum-comments:
-      GenderFemale: "2"
-      GenderMale: "1"
-      GenderUnknown: "0"
-    x-enum-descriptions:
-    - "0"
-    - "1"
-    - "2"
-    x-enum-varnames:
-    - GenderUnknown
-    - GenderMale
-    - GenderFemale
   handlers.AvatarData:
     properties:
       url:
         example: /avatars/xxxx.png
         type: string
+    type: object
+  handlers.EditOtherRequest:
+    properties:
+      key:
+        type: string
+      user_id:
+        type: integer
+      value: {}
+    type: object
+  handlers.EditOtherResponse:
+    properties:
+      message:
+        type: string
+      success:
+        example: true
+        type: boolean
     type: object
   handlers.EditRequest:
     properties:
@@ -67,8 +65,10 @@ definitions:
       email:
         type: string
       gender:
-        $ref: '#/definitions/enums.Gender'
+        type: string
       nickname:
+        type: string
+      permission:
         type: string
       signature:
         type: string
@@ -168,7 +168,19 @@ definitions:
         type: integer
     type: object
   handlers.UploadAvatarRequest:
-    description: 头像上传请求参数
+    type: object
+  handlers.UploadAvatarResponse:
+    properties:
+      data:
+        $ref: '#/definitions/handlers.AvatarData'
+      message:
+        example: 头像上传成功
+        type: string
+      success:
+        example: true
+        type: boolean
+    type: object
+  handlers.UploadOtherAvatarRequest:
     properties:
       user_id:
         description: |-
@@ -177,8 +189,7 @@ definitions:
         example: 1
         type: integer
     type: object
-  handlers.UploadAvatarResponse:
-    description: 头像上传响应
+  handlers.UploadOtherAvatarResponse:
     properties:
       data:
         $ref: '#/definitions/handlers.AvatarData'
@@ -203,7 +214,7 @@ info:
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: http://swagger.io/terms/
   title: sp_backend API
-  version: "1.2"
+  version: 1.2.1
 paths:
   /app/auth/login:
     post:
@@ -295,7 +306,7 @@ paths:
       summary: 用户注册
       tags:
       - 认证
-  /app/avatar/{filename}:
+  /app/files/avatar/{filename}:
     get:
       description: 通过文件名访问头像图片，禁止路径遍历和目录列表
       parameters:
@@ -331,7 +342,7 @@ paths:
       - multipart/form-data
       description: 上传用户头像
       parameters:
-      - description: 上传用户头像表单
+      - description: 上传用户自己头像表单
         in: body
         name: request
         required: true
@@ -344,6 +355,36 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/handlers.UploadAvatarResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 上传用户头像
+      tags:
+      - 头像
+  /app/uploads/avatar-other:
+    post:
+      consumes:
+      - multipart/form-data
+      description: 上传用户头像
+      parameters:
+      - description: 上传其他用户头像表单
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.UploadOtherAvatarRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.UploadOtherAvatarResponse'
         "400":
           description: Bad Request
           schema:
@@ -383,6 +424,36 @@ paths:
           schema:
             $ref: '#/definitions/handlers.ErrorResponse'
       summary: 修改用户自己的信息
+      tags:
+      - 用户
+  /app/user/edit-other:
+    post:
+      consumes:
+      - application/json
+      description: 除了ID和用户名和密码和头像(不在这里改)改不了其他都能改
+      parameters:
+      - description: 修改其他用户数值信息
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.EditOtherRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.EditOtherResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 修改别的用户的信息
       tags:
       - 用户
   /app/user/get-info:

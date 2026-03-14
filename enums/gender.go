@@ -23,7 +23,7 @@ func (g Gender) ToInt() int {
 	return int(g)
 }
 
-func FromString(s string) Gender {
+func GenderFromString(s string) Gender {
 	switch s {
 	case "male":
 		return GenderMale
