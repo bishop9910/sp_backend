@@ -18,6 +18,12 @@ definitions:
     - GenderUnknown
     - GenderMale
     - GenderFemale
+  handlers.AvatarData:
+    properties:
+      url:
+        example: /avatars/xxxx.png
+        type: string
+    type: object
   handlers.EditRequest:
     properties:
       key:
@@ -28,17 +34,27 @@ definitions:
     properties:
       message:
         type: string
+      success:
+        example: true
+        type: boolean
     type: object
   handlers.ErrorResponse:
     properties:
       error:
         example: invalid request
         type: string
-      message:
-        example: 详细错误信息
-        type: string
     type: object
   handlers.GetInfoResponse:
+    properties:
+      data:
+        $ref: '#/definitions/handlers.GetInfoResponseData'
+      message:
+        type: string
+      success:
+        example: true
+        type: boolean
+    type: object
+  handlers.GetInfoResponseData:
     properties:
       avatar:
         type: string
@@ -71,6 +87,17 @@ definitions:
     type: object
   handlers.LoginResponse:
     properties:
+      data:
+        $ref: '#/definitions/handlers.LoginResponseData'
+      message:
+        example: ok
+        type: string
+      success:
+        example: true
+        type: boolean
+    type: object
+  handlers.LoginResponseData:
+    properties:
       access_token:
         type: string
       expires_in:
@@ -87,6 +114,17 @@ definitions:
     - refresh_token
     type: object
   handlers.RefreshResponse:
+    properties:
+      data:
+        $ref: '#/definitions/handlers.RefreshResponseData'
+      message:
+        example: ok
+        type: string
+      success:
+        example: true
+        type: boolean
+    type: object
+  handlers.RefreshResponseData:
     properties:
       access_token:
         type: string
@@ -111,14 +149,45 @@ definitions:
     type: object
   handlers.RegisterResponse:
     properties:
-      access_token:
-        type: string
+      data:
+        $ref: '#/definitions/handlers.RegisterResponseData'
       message:
+        example: ok
+        type: string
+      success:
+        example: true
+        type: boolean
+    type: object
+  handlers.RegisterResponseData:
+    properties:
+      access_token:
         type: string
       refresh_token:
         type: string
       user_id:
         type: integer
+    type: object
+  handlers.UploadAvatarRequest:
+    description: 头像上传请求参数
+    properties:
+      user_id:
+        description: |-
+          用户ID
+          @required
+        example: 1
+        type: integer
+    type: object
+  handlers.UploadAvatarResponse:
+    description: 头像上传响应
+    properties:
+      data:
+        $ref: '#/definitions/handlers.AvatarData'
+      message:
+        example: 头像上传成功
+        type: string
+      success:
+        example: true
+        type: boolean
     type: object
 externalDocs:
   description: OpenAPI
@@ -134,7 +203,7 @@ info:
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: http://swagger.io/terms/
   title: sp_backend API
-  version: "1.1"
+  version: "1.2"
 paths:
   /app/auth/login:
     post:
@@ -226,6 +295,66 @@ paths:
       summary: 用户注册
       tags:
       - 认证
+  /app/avatar/{filename}:
+    get:
+      description: 通过文件名访问头像图片，禁止路径遍历和目录列表
+      parameters:
+      - description: 头像文件名
+        in: path
+        name: filename
+        required: true
+        type: string
+      produces:
+      - image/png
+      - image/jpeg
+      - image/gif
+      - image/webp
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 获取用户头像
+      tags:
+      - 头像
+  /app/uploads/avatar:
+    post:
+      consumes:
+      - multipart/form-data
+      description: 上传用户头像
+      parameters:
+      - description: 上传用户头像表单
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.UploadAvatarRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.UploadAvatarResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 上传用户头像
+      tags:
+      - 头像
   /app/user/edit:
     post:
       consumes:

@@ -24,6 +24,12 @@ func NewUserHandler(userRepo *repository.UserRepository, jwtConfig *utils.JWTCon
 
 // GetInfoResponse 个人信息响应
 type GetInfoResponse struct {
+	Success bool                `json:"success" example:"true"`
+	Message string              `json:"message"`
+	Data    GetInfoResponseData `json:"data"`
+}
+
+type GetInfoResponseData struct {
 	Username    string       `json:"username"`
 	Email       string       `json:"email"`
 	Avatar      string       `json:"avatar"`
@@ -73,7 +79,7 @@ func (h *UserHandler) GetInfo(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "user not found"})
 	}
 
-	c.JSON(http.StatusCreated, GetInfoResponse{
+	data := GetInfoResponseData{
 		Username:    user.Username,
 		Email:       user.Email,
 		NickName:    user.NickName,
@@ -83,6 +89,12 @@ func (h *UserHandler) GetInfo(c *gin.Context) {
 		Gender:      user.Gender,
 		Birth:       utils.TimeToString(user.Birth),
 		Signature:   user.Signature,
+	}
+
+	c.JSON(http.StatusCreated, GetInfoResponse{
+		Success: true,
+		Message: "ok",
+		Data:    data,
 	})
 }
 
@@ -94,6 +106,7 @@ type EditRequest struct {
 
 // EditResponse 修改数据响应
 type EditResponse struct {
+	Success bool   `json:"success" example:"true"`
 	Message string `json:"message"`
 }
 
@@ -242,6 +255,7 @@ func (h *UserHandler) Edit(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, EditResponse{
+		Success: true,
 		Message: "edited successfully",
 	})
 }

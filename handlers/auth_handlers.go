@@ -31,6 +31,12 @@ type LoginRequest struct {
 
 // LoginResponse 登录响应
 type LoginResponse struct {
+	Success bool              `json:"success" example:"true"`
+	Message string            `json:"message" example:"ok"`
+	Data    LoginResponseData `json:"data"`
+}
+
+type LoginResponseData struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
 	ExpiresIn    int64  `json:"expires_in"` // (多少秒token过期)
@@ -74,14 +80,17 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	// 4. 构造响应
-	resp := LoginResponse{
+	data := LoginResponseData{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 		ExpiresIn:    int64(h.jwtConfig.AccessTokenExp.Seconds()),
 	}
 
-	c.JSON(http.StatusOK, resp)
+	c.JSON(http.StatusOK, LoginResponse{
+		Success: true,
+		Message: "ok",
+		Data:    data,
+	})
 }
 
 // RefreshRequest 刷新令牌请求
@@ -91,6 +100,12 @@ type RefreshRequest struct {
 
 // RefreshResponse 刷新令牌响应
 type RefreshResponse struct {
+	Success bool                `json:"success" example:"true"`
+	Message string              `json:"message" example:"ok"`
+	Data    RefreshResponseData `json:"data"`
+}
+
+type RefreshResponseData struct {
 	AccessToken string `json:"access_token"`
 	ExpiresIn   int64  `json:"expires_in"`
 }
@@ -119,9 +134,15 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, RefreshResponse{
+	data := RefreshResponseData{
 		AccessToken: newAccessToken,
 		ExpiresIn:   int64(h.jwtConfig.AccessTokenExp.Seconds()),
+	}
+
+	c.JSON(http.StatusOK, RefreshResponse{
+		Success: true,
+		Message: "ok",
+		Data:    data,
 	})
 }
 
@@ -134,7 +155,12 @@ type RegisterRequest struct {
 
 // RegisterResponse 注册响应
 type RegisterResponse struct {
-	Message      string `json:"message"`
+	Success bool                 `json:"success" example:"true"`
+	Message string               `json:"message" example:"ok"`
+	Data    RegisterResponseData `json:"data"`
+}
+
+type RegisterResponseData struct {
 	UserID       uint64 `json:"user_id"`
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
@@ -187,10 +213,15 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	// 4. 生成 Token
 	accessToken, refreshToken, _ := h.jwtConfig.GenerateToken(newUser.ID, newUser.Username)
 
-	c.JSON(http.StatusCreated, RegisterResponse{
-		Message:      "registration successful",
+	data := RegisterResponseData{
 		UserID:       newUser.ID,
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
+	}
+
+	c.JSON(http.StatusCreated, RegisterResponse{
+		Success: true,
+		Message: "registration successful",
+		Data:    data,
 	})
 }
