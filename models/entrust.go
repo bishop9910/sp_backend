@@ -14,7 +14,7 @@ type CommunityEntrust struct {
 	IsOver        bool      `gorm:"not null;default:false" json:"is_over"`
 
 	Images   []CommunityEntrustImage `gorm:"foreignKey:EntrustID" json:"images,omitempty"`
-	Comments []EntrustComment        `gorm:"foreignKey:EntrustID" json:"comments,omitempty"`
+	Comments []EntrustComment        `gorm:"foreignKey:EntrustID;constraint:OnDelete:CASCADE" json:"comments,omitempty"`
 }
 
 func (CommunityEntrust) TableName() string {

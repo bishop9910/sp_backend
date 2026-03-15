@@ -6,6 +6,7 @@ type PostComment struct {
 	UserID  uint64 `gorm:"not null;index" json:"user_id"`
 	PostID  uint64 `gorm:"not null;index" json:"post_id"`
 	Content string `gorm:"type:text;not null" json:"content"`
+	Like    uint64 `gorm:"not null;default:0" json:"like"`
 }
 
 func (PostComment) TableName() string {

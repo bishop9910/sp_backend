@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -19,7 +20,7 @@ import (
 type AvatarHandler struct {
 	userRepo     *repository.UserRepository
 	jwtConfig    *utils.JWTConfig
-	avatarConfig AvatarConfig
+	avatarConfig *AvatarConfig
 }
 
 type AvatarConfig struct {
@@ -32,7 +33,7 @@ func NewAvatarHandler(userRepo *repository.UserRepository, jwtConfig *utils.JWTC
 	return &AvatarHandler{
 		userRepo:  userRepo,
 		jwtConfig: jwtConfig,
-		avatarConfig: AvatarConfig{
+		avatarConfig: &AvatarConfig{
 			avatarDir:     "./uploads/avatars",
 			maxUploadSize: 5 * 1024 * 1024,
 			allowedMimeType: map[string]bool{
@@ -50,7 +51,7 @@ type UploadAvatarRequest struct {
 	// @in formData
 	// @type file
 	// @required
-	Avatar string `form:"avatar" swaggerignore:"true"`
+	Avatar string `form:"avatar"`
 }
 
 // UploadAvatarResponse 上传响应
@@ -67,7 +68,7 @@ type AvatarData struct {
 
 // UploadAvatar 上传用户头像
 // @Summary      上传用户头像
-// @Description  上传用户头像
+// @Description  上传用户头像 注意！！那个avatar是string类型是错的应该为file文件
 // @Tags         头像
 // @Accept       multipart/form-data
 // @Produce      json
@@ -101,7 +102,6 @@ func (h *AvatarHandler) UploadAvatar(c *gin.Context) {
 	}
 	token := authHeader[len(bearerPrefix):]
 
-	fmt.Println(token)
 	claims, err := h.jwtConfig.ParseToken(token)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid authorization"})
@@ -183,7 +183,7 @@ type UploadOtherAvatarRequest struct {
 	// @in formData
 	// @type file
 	// @required
-	Avatar string `form:"avatar" swaggerignore:"true"`
+	Avatar string `form:"avatar"`
 
 	// 用户ID
 	// @required
@@ -199,7 +199,7 @@ type UploadOtherAvatarResponse struct {
 
 // UploadOtherAvatar 修改别的用户的头像
 // @Summary      上传用户头像
-// @Description  上传用户头像
+// @Description  上传用户头像 注意！！那个avatar是string类型是错的应该为file文件
 // @Tags         头像
 // @Accept       multipart/form-data
 // @Produce      json
@@ -255,7 +255,7 @@ func (h *AvatarHandler) UploadOtherAvatar(c *gin.Context) {
 	userIDStr := c.PostForm("user_id")
 	userID, err := strconv.ParseUint(userIDStr, 10, 64)
 	if err != nil || userID == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "用户 ID 格式错误"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "unknown id format"})
 		return
 	}
 	targetUser, err := h.userRepo.GetByID(userID)
@@ -344,79 +344,23 @@ func (h *AvatarHandler) UploadOtherAvatar(c *gin.Context) {
 // @Router /app/files/avatar/{filename} [get]
 func (h *AvatarHandler) AvatarsHandler(c *gin.Context) {
 	filename := c.Param("filename")
+	cleanPath, ext, err := utils.ValidateAndResolveImagePath(filename, h.avatarConfig.avatarDir)
 
-	// 1. 基础验证：文件名不能为空
-	if filename == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "",
-		})
-		return
-	}
-
-	if strings.Contains(filename, "..") || strings.Contains(filename, "/") || strings.Contains(filename, "\\") {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "unallowed file name",
-		})
-		return
-	}
-
-	allowedExts := map[string]bool{
-		".jpg":  true,
-		".jpeg": true,
-		".png":  true,
-		".webp": true,
-		".avif": true,
-	}
-	ext := strings.ToLower(filepath.Ext(filename))
-	if !allowedExts[ext] {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "only allowed to get image files",
-		})
-		return
-	}
-
-	safePath := filepath.Join(h.avatarConfig.avatarDir, filename)
-
-	cleanPath, err := filepath.Abs(safePath)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "server error",
-		})
-		return
-	}
+		statusCode := http.StatusInternalServerError
+		errMsg := "server error"
 
-	baseDir, err := filepath.Abs(h.avatarConfig.avatarDir)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "server error",
-		})
-		return
-	}
+		switch {
+		case errors.Is(err, utils.ErrEmptyFilename), errors.Is(err, utils.ErrUnallowedFilename),
+			errors.Is(err, utils.ErrUnallowedExt), errors.Is(err, utils.ErrUnallowedPath), errors.Is(err, utils.ErrIsDirectory):
+			statusCode = http.StatusBadRequest
+			errMsg = err.Error()
+		case errors.Is(err, utils.ErrFileNotFound):
+			statusCode = http.StatusNotFound
+			errMsg = err.Error()
+		}
 
-	if !strings.HasPrefix(cleanPath, baseDir) {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "unallowed path",
-		})
-		return
-	}
-
-	fileInfo, err := os.Stat(cleanPath)
-	if os.IsNotExist(err) {
-		c.JSON(http.StatusNotFound, gin.H{
-			"error": "file not found",
-		})
-		return
-	}
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "server error",
-		})
-		return
-	}
-	if fileInfo.IsDir() {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "dist not allowed",
-		})
+		c.JSON(statusCode, gin.H{"error": errMsg})
 		return
 	}
 

@@ -9,9 +9,10 @@ type CommunityPost struct {
 	Title      string    `gorm:"type:varchar(255);not null;default:'未命名标题'" json:"title"`
 	Content    string    `gorm:"type:text" json:"content"`
 	CreateTime time.Time `gorm:"not null;autoCreateTime" json:"create_time"`
+	Like       uint64    `gorm:"not null;default:0" json:"like"`
 
 	Images   []CommunityPostImage `gorm:"foreignKey:PostID" json:"images,omitempty"`
-	Comments []PostComment        `gorm:"foreignKey:PostID" json:"comments,omitempty"`
+	Comments []PostComment        `gorm:"foreignKey:PostID;constraint:OnDelete:CASCADE" json:"comments,omitempty"`
 }
 
 func (CommunityPost) TableName() string {

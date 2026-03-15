@@ -1,10 +1,44 @@
 basePath: /app
 definitions:
+  handlers.AddPostImageRequest:
+    properties:
+      image:
+        description: |-
+          图像文件
+          @in formData
+          @type file
+          @required
+        type: string
+      post_id:
+        description: 帖子ID
+        type: integer
+    type: object
+  handlers.AddPostImageResponse:
+    properties:
+      message:
+        example: 上传成功
+        type: string
+      success:
+        example: true
+        type: boolean
+    type: object
   handlers.AvatarData:
     properties:
       url:
         example: /avatars/xxxx.png
         type: string
+    type: object
+  handlers.DeletePostRequest:
+    properties:
+      post_id:
+        type: integer
+    type: object
+  handlers.DeletePostResponse:
+    properties:
+      message:
+        type: string
+      success:
+        type: boolean
     type: object
   handlers.EditOtherRequest:
     properties:
@@ -75,6 +109,36 @@ definitions:
       username:
         type: string
     type: object
+  handlers.GetPostByUserResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/models.CommunityPost'
+        type: array
+      message:
+        type: string
+      page:
+        type: integer
+      success:
+        type: boolean
+      total:
+        type: integer
+    type: object
+  handlers.GetPostsResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/models.CommunityPost'
+        type: array
+      message:
+        type: string
+      page:
+        type: integer
+      success:
+        type: boolean
+      total:
+        type: integer
+    type: object
   handlers.LoginRequest:
     properties:
       password:
@@ -105,6 +169,20 @@ definitions:
         type: integer
       refresh_token:
         type: string
+    type: object
+  handlers.NewPostRequest:
+    properties:
+      content:
+        type: string
+      title:
+        type: string
+    type: object
+  handlers.NewPostResponse:
+    properties:
+      message:
+        type: string
+      success:
+        type: boolean
     type: object
   handlers.RefreshRequest:
     properties:
@@ -168,6 +246,14 @@ definitions:
         type: integer
     type: object
   handlers.UploadAvatarRequest:
+    properties:
+      avatar:
+        description: |-
+          头像文件
+          @in formData
+          @type file
+          @required
+        type: string
     type: object
   handlers.UploadAvatarResponse:
     properties:
@@ -182,6 +268,13 @@ definitions:
     type: object
   handlers.UploadOtherAvatarRequest:
     properties:
+      avatar:
+        description: |-
+          头像文件
+          @in formData
+          @type file
+          @required
+        type: string
       user_id:
         description: |-
           用户ID
@@ -200,6 +293,51 @@ definitions:
         example: true
         type: boolean
     type: object
+  models.CommunityPost:
+    properties:
+      comments:
+        items:
+          $ref: '#/definitions/models.PostComment'
+        type: array
+      content:
+        type: string
+      create_time:
+        type: string
+      id:
+        type: integer
+      images:
+        items:
+          $ref: '#/definitions/models.CommunityPostImage'
+        type: array
+      like:
+        type: integer
+      title:
+        type: string
+      user_id:
+        type: integer
+    type: object
+  models.CommunityPostImage:
+    properties:
+      id:
+        type: integer
+      image_url:
+        type: string
+      post_id:
+        type: integer
+    type: object
+  models.PostComment:
+    properties:
+      content:
+        type: string
+      id:
+        type: integer
+      like:
+        type: integer
+      post_id:
+        type: integer
+      user_id:
+        type: integer
+    type: object
 externalDocs:
   description: OpenAPI
   url: https://swagger.io/resources/open-api/
@@ -214,7 +352,7 @@ info:
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: http://swagger.io/terms/
   title: sp_backend API
-  version: 1.2.1
+  version: 1.2.3
 paths:
   /app/auth/login:
     post:
@@ -336,11 +474,133 @@ paths:
       summary: 获取用户头像
       tags:
       - 头像
+  /app/files/post/{filename}:
+    get:
+      description: 通过文件名访问帖子图片，禁止路径遍历和目录列表
+      parameters:
+      - description: 帖子文件名
+        in: path
+        name: filename
+        required: true
+        type: string
+      produces:
+      - image/png
+      - image/jpeg
+      - image/gif
+      - image/webp
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 获取帖子图片
+      tags:
+      - 帖子
+  /app/post/delete:
+    post:
+      consumes:
+      - application/json
+      description: 删帖
+      parameters:
+      - description: 帖子删除请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.DeletePostRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.DeletePostResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 删帖
+      tags:
+      - 帖子
+  /app/post/list:
+    get:
+      consumes:
+      - application/json
+      description: 分页获取社区帖子列表，默认按创建时间倒序
+      parameters:
+      - default: 1
+        description: 页码
+        format: int32
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: 每页数量
+        format: int32
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.GetPostsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 获取帖子列表
+      tags:
+      - 帖子
+  /app/post/new:
+    post:
+      consumes:
+      - application/json
+      description: 发帖（只能文字，图片有单独上传api，到时候拿文件列表遍历访问那个api）
+      parameters:
+      - description: 上传用户自己头像表单
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.NewPostRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.NewPostResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 发帖
+      tags:
+      - 帖子
   /app/uploads/avatar:
     post:
       consumes:
       - multipart/form-data
-      description: 上传用户头像
+      description: 上传用户头像 注意！！那个avatar是string类型是错的应该为file文件
       parameters:
       - description: 上传用户自己头像表单
         in: body
@@ -370,7 +630,7 @@ paths:
     post:
       consumes:
       - multipart/form-data
-      description: 上传用户头像
+      description: 上传用户头像 注意！！那个avatar是string类型是错的应该为file文件
       parameters:
       - description: 上传其他用户头像表单
         in: body
@@ -396,6 +656,36 @@ paths:
       summary: 上传用户头像
       tags:
       - 头像
+  /app/uploads/post:
+    post:
+      consumes:
+      - multipart/form-data
+      description: 拿图片文件列表遍历访问我 注意！！那个image是string类型是错的应该为file文件
+      parameters:
+      - description: 上传用户自己头像表单
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.AddPostImageRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.AddPostImageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 添加图片
+      tags:
+      - 帖子
   /app/user/edit:
     post:
       consumes:
@@ -479,6 +769,48 @@ paths:
       summary: 获取用户信息
       tags:
       - 用户
+  /app/users/{user_id}/posts:
+    get:
+      consumes:
+      - application/json
+      description: 分页获取指定用户发布的帖子列表
+      parameters:
+      - description: 用户ID
+        format: int64
+        in: path
+        name: user_id
+        required: true
+        type: integer
+      - default: 1
+        description: 页码
+        format: int32
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: 每页数量
+        format: int32
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.GetPostByUserResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 获取用户帖子
+      tags:
+      - 帖子
 schemes:
 - http
 - https

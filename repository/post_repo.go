@@ -36,6 +36,10 @@ func (r *PostRepository) Update(p *models.CommunityPost) error {
 	return r.db.Model(p).Updates(p).Error
 }
 
+func (r *PostRepository) UpdateFields(id uint64, updates map[string]interface{}) error {
+	return r.db.Model(&models.CommunityPost{}).Where("id = ?", id).Updates(updates).Error
+}
+
 func (r *PostRepository) Delete(id uint64) error {
 	return r.db.Delete(&models.CommunityPost{}, id).Error
 }
@@ -65,4 +69,39 @@ func (r *PostRepository) ListByUser(userID uint64, page, pageSize int) ([]models
 		Limit(pageSize).Offset((page - 1) * pageSize).
 		Find(&list).Error
 	return list, total, err
+}
+
+func (r *PostRepository) ListPostsWithPreload(page, pageSize int) ([]models.CommunityPost, int64, error) {
+	var posts []models.CommunityPost
+	var total int64
+
+	r.db.Model(&models.CommunityPost{}).Count(&total)
+
+	err := r.db.
+		Preload("Images").
+		Preload("Comments").
+		Order("create_time DESC").
+		Offset((page - 1) * pageSize).
+		Limit(pageSize).
+		Find(&posts).Error
+
+	return posts, total, err
+}
+
+func (r *PostRepository) ListByUserWithPreload(userID uint64, page, pageSize int) ([]models.CommunityPost, int64, error) {
+	var posts []models.CommunityPost
+	var total int64
+
+	db := r.db.Model(&models.CommunityPost{}).Where("user_id = ?", userID)
+	db.Count(&total)
+
+	err := db.
+		Preload("Images").
+		Preload("Comments").
+		Order("create_time DESC").
+		Offset((page - 1) * pageSize).
+		Limit(pageSize).
+		Find(&posts).Error
+
+	return posts, total, err
 }
