@@ -28,6 +28,44 @@ definitions:
         example: /avatars/xxxx.png
         type: string
     type: object
+  handlers.CreateCommentRequest:
+    properties:
+      content:
+        description: 评论内容
+        type: string
+      post_id:
+        description: 帖子ID
+        type: integer
+    required:
+    - content
+    - post_id
+    type: object
+  handlers.CreateCommentResponse:
+    properties:
+      message:
+        example: 评论成功
+        type: string
+      success:
+        example: true
+        type: boolean
+    type: object
+  handlers.DeleteCommentRequest:
+    properties:
+      comment_id:
+        description: 评论ID
+        type: integer
+    required:
+    - comment_id
+    type: object
+  handlers.DeleteCommentResponse:
+    properties:
+      message:
+        example: 删除成功
+        type: string
+      success:
+        example: true
+        type: boolean
+    type: object
   handlers.DeletePostRequest:
     properties:
       post_id:
@@ -76,6 +114,21 @@ definitions:
         example: invalid request
         type: string
     type: object
+  handlers.GetCommentsResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/models.PostComment'
+        type: array
+      message:
+        type: string
+      page:
+        type: integer
+      success:
+        type: boolean
+      total:
+        type: integer
+    type: object
   handlers.GetInfoResponse:
     properties:
       data:
@@ -108,6 +161,15 @@ definitions:
         type: string
       username:
         type: string
+    type: object
+  handlers.GetPostByIDResponse:
+    properties:
+      data:
+        $ref: '#/definitions/models.CommunityPost'
+      message:
+        type: string
+      success:
+        type: boolean
     type: object
   handlers.GetPostByUserResponse:
     properties:
@@ -352,7 +414,7 @@ info:
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: http://swagger.io/terms/
   title: sp_backend API
-  version: 1.2.3
+  version: 1.2.5
 paths:
   /app/auth/login:
     post:
@@ -502,6 +564,141 @@ paths:
           schema:
             $ref: '#/definitions/handlers.ErrorResponse'
       summary: 获取帖子图片
+      tags:
+      - 帖子
+  /app/post/{post_id}:
+    get:
+      consumes:
+      - application/json
+      description: 给ID拿帖子
+      parameters:
+      - description: 帖子ID
+        format: int64
+        in: path
+        name: post_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.GetPostByIDResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 获取帖子
+      tags:
+      - 帖子
+  /app/post/comment:
+    get:
+      consumes:
+      - application/json
+      description: 分页获取指定帖子的评论列表，按创建时间倒序
+      parameters:
+      - description: 帖子ID
+        format: int64
+        in: query
+        name: post_id
+        required: true
+        type: integer
+      - default: 1
+        description: 页码
+        format: int32
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: 每页数量
+        format: int32
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.GetCommentsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 获取评论列表
+      tags:
+      - 帖子
+    post:
+      consumes:
+      - application/json
+      description: 为指定帖子创建一条新评论，需要用户登录认证
+      parameters:
+      - description: 评论创建请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CreateCommentRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/handlers.CreateCommentResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 创建评论
+      tags:
+      - 帖子
+  /app/post/comment/delete:
+    post:
+      consumes:
+      - application/json
+      description: 删除指定评论，仅评论作者或管理员可操作
+      parameters:
+      - description: 评论删除请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.DeleteCommentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.DeleteCommentResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 删除评论
       tags:
       - 帖子
   /app/post/delete:

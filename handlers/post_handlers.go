@@ -427,6 +427,46 @@ func (h *PostHandler) GetPostByUser(c *gin.Context) {
 	})
 }
 
+type GetPostByIDResponse struct {
+	Success bool                 `json:"success"`
+	Message string               `json:"message"`
+	Data    models.CommunityPost `json:"data"`
+}
+
+// GetPostByUser 获取指定ID的帖子
+// @Summary      获取帖子
+// @Description  给ID拿帖子
+// @Tags         帖子
+// @Accept       json
+// @Produce      json
+// @Param        post_id  path   uint64  true  "帖子ID"
+// @Success      200      {object}  GetPostByIDResponse
+// @Failure      400      {object}  ErrorResponse
+// @Failure      404      {object}  ErrorResponse
+// @Router       /app/post/{post_id} [get]
+func (h *PostHandler) GetPostByID(c *gin.Context) {
+	var PostID uint64
+	if postID, err := strconv.ParseUint(c.Param("post_id"), 10, 64); err == nil {
+		PostID = postID
+	}
+
+	post, err := h.postRepo.GetByID(PostID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "查询帖子失败",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, GetPostByIDResponse{
+		Success: true,
+		Message: "ok",
+		Data:    *post,
+	})
+
+}
+
 // DeletePostRequest 帖子删除请求
 type DeletePostRequest struct {
 	PostID uint64 `json:"post_id"`
@@ -567,4 +607,231 @@ func (h *PostHandler) HandlePostImage(c *gin.Context) {
 	c.Header("Cache-Control", "public, max-age=31536000") // 缓存 1 年
 
 	c.File(cleanPath)
+}
+
+// CreateCommentRequest 创建评论请求体
+type CreateCommentRequest struct {
+	PostID  uint64 `json:"post_id" binding:"required"` // 帖子ID
+	Content string `json:"content" binding:"required"` // 评论内容
+}
+
+// CreateCommentResponse 创建评论响应
+type CreateCommentResponse struct {
+	Success bool   `json:"success" example:"true"`
+	Message string `json:"message" example:"评论成功"`
+}
+
+// CreateComment 创建评论
+// @Summary      创建评论
+// @Description  为指定帖子创建一条新评论，需要用户登录认证
+// @Tags         帖子
+// @Accept       json
+// @Produce      json
+// @Param        request  body      CreateCommentRequest  true  "评论创建请求"
+// @Success      201      {object}  CreateCommentResponse
+// @Failure      400      {object}  ErrorResponse
+// @Failure      401      {object}  ErrorResponse
+// @Router       /app/post/comment [post]
+func (h *PostHandler) CreateComment(c *gin.Context) {
+	var req CreateCommentRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request: " + err.Error()})
+		return
+	}
+
+	if len(req.Content) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "评论内容不能为空"})
+		return
+	}
+	if len(req.Content) > 2048 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "评论内容过长，最多2048字符"})
+		return
+	}
+
+	authHeader := c.GetHeader("Authorization")
+	if authHeader == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing authorization header"})
+		return
+	}
+	const bearerPrefix = "Bearer "
+	if len(authHeader) < len(bearerPrefix) || authHeader[:len(bearerPrefix)] != bearerPrefix {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid authorization format"})
+		return
+	}
+	token := authHeader[len(bearerPrefix):]
+	claims, err := h.jwtConfig.ParseToken(token)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid authorization"})
+		return
+	}
+
+	post, err := h.postRepo.GetByID(req.PostID)
+	if err != nil || post.ID == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "post not found"})
+		return
+	}
+
+	newComment := &models.PostComment{
+		UserID:  claims.UserID,
+		PostID:  req.PostID,
+		Content: req.Content,
+		Like:    0,
+	}
+	if err := h.postCommentRepo.Create(newComment); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create comment"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, CreateCommentResponse{
+		Success: true,
+		Message: "comment created successfully",
+	})
+}
+
+// GetCommentsRequest 获取评论列表请求
+type GetCommentsRequest struct {
+	PostID   uint64 `json:"post_id" form:"post_id" binding:"required"` // 帖子ID
+	Page     uint16 `json:"page" form:"page"`                          // 页码，默认1
+	PageSize uint16 `json:"page_size" form:"page_size"`                // 每页数量，默认20
+}
+
+// GetCommentsResponse 获取评论列表响应
+type GetCommentsResponse struct {
+	Success bool                 `json:"success"`
+	Message string               `json:"message"`
+	Data    []models.PostComment `json:"data"`
+	Total   int64                `json:"total"`
+	Page    uint16               `json:"page"`
+}
+
+// GetComments 获取帖子评论列表
+// @Summary      获取评论列表
+// @Description  分页获取指定帖子的评论列表，按创建时间倒序
+// @Tags         帖子
+// @Accept       json
+// @Produce      json
+// @Param        post_id  query  uint64  true   "帖子ID"
+// @Param        page     query  uint16  false  "页码"     default(1)
+// @Param        page_size query uint16  false  "每页数量"  default(20)
+// @Success      200      {object}  GetCommentsResponse
+// @Failure      400      {object}  ErrorResponse
+// @Failure      404      {object}  ErrorResponse
+// @Router       /app/post/comment [get]
+func (h *PostHandler) GetComments(c *gin.Context) {
+	var req GetCommentsRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "参数解析失败: " + err.Error(),
+		})
+		return
+	}
+
+	if req.Page == 0 {
+		req.Page = 1
+	}
+	if req.PageSize == 0 || req.PageSize > 100 {
+		req.PageSize = 20
+	}
+
+	_, err := h.postRepo.GetByID(req.PostID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"success": false,
+			"message": "post not found",
+		})
+		return
+	}
+
+	comments, total, err := h.postCommentRepo.ListByPostID(req.PostID, int(req.Page), int(req.PageSize))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "failed to fetch comments",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, GetCommentsResponse{
+		Success: true,
+		Message: "success",
+		Data:    comments,
+		Total:   total,
+		Page:    req.Page,
+	})
+}
+
+// DeleteCommentRequest 删除评论请求
+type DeleteCommentRequest struct {
+	CommentID uint64 `json:"comment_id" binding:"required"` // 评论ID
+}
+
+// DeleteCommentResponse 删除评论响应
+type DeleteCommentResponse struct {
+	Success bool   `json:"success" example:"true"`
+	Message string `json:"message" example:"删除成功"`
+}
+
+// DeleteComment 删除评论
+// @Summary      删除评论
+// @Description  删除指定评论，仅评论作者或管理员可操作
+// @Tags         帖子
+// @Accept       json
+// @Produce      json
+// @Param        request  body      DeleteCommentRequest  true  "评论删除请求"
+// @Success      200      {object}  DeleteCommentResponse
+// @Failure      400      {object}  ErrorResponse
+// @Failure      401      {object}  ErrorResponse
+// @Failure      403      {object}  ErrorResponse
+// @Router       /app/post/comment/delete [post]
+func (h *PostHandler) DeleteComment(c *gin.Context) {
+	var req DeleteCommentRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		return
+	}
+
+	authHeader := c.GetHeader("Authorization")
+	if authHeader == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing authorization header"})
+		return
+	}
+	const bearerPrefix = "Bearer "
+	if len(authHeader) < len(bearerPrefix) || authHeader[:len(bearerPrefix)] != bearerPrefix {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid authorization format"})
+		return
+	}
+	token := authHeader[len(bearerPrefix):]
+	claims, err := h.jwtConfig.ParseToken(token)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid authorization"})
+		return
+	}
+
+	comment, err := h.postCommentRepo.GetByID(req.CommentID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "comment not found"})
+		return
+	}
+
+	user, err := h.userRepo.GetByID(claims.UserID)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid authorization"})
+		return
+	}
+
+	if comment.UserID != user.ID && user.Permission != enums.AdminPermission {
+		c.JSON(http.StatusForbidden, gin.H{"error": "permission denied"})
+		return
+	}
+
+	if err := h.postCommentRepo.Delete(req.CommentID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete comment"})
+		return
+	}
+
+	c.JSON(http.StatusOK, DeleteCommentResponse{
+		Success: true,
+		Message: "comment deleted successfully",
+	})
 }

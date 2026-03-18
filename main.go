@@ -21,7 +21,7 @@ import (
 )
 
 // @title           sp_backend API
-// @version         1.2.3
+// @version         1.2.5
 // @description     社区平台 API 文档，包含用户、帖子、委托等功能
 // @termsOfService  http://swagger.io/terms/
 
@@ -70,6 +70,15 @@ func main() {
 
 	config := cors.DefaultConfig()
 	config.AllowAllOrigins = true
+	config.AllowHeaders = []string{
+		"Origin",
+		"Content-Type",
+		"Accept",
+		"Authorization",
+		"authorization",
+		"istoken",
+		"X-Request-ID",
+	}
 
 	server.Use(cors.New(config))
 	frontend.WebInit(server)
@@ -115,9 +124,13 @@ func main() {
 
 	postRouter := protectedRouter.Group("/post")
 	{
-		postRouter.GET("/list", postHandler.GetPosts)      // @Tags 帖子
-		postRouter.POST("/new", postHandler.NewPost)       // @Tags 帖子
-		postRouter.POST("/delete", postHandler.DeletePost) // @Tags 帖子
+		postRouter.GET("/list", postHandler.GetPosts)                 // @Tags 帖子
+		postRouter.POST("/new", postHandler.NewPost)                  // @Tags 帖子
+		postRouter.POST("/delete", postHandler.DeletePost)            // @Tags 帖子
+		postRouter.POST("/comment", postHandler.CreateComment)        // @Tags 帖子
+		postRouter.GET("/comment", postHandler.GetComments)           // @Tags 帖子
+		postRouter.POST("/comment/delete", postHandler.DeleteComment) // @Tags 帖子
+		postRouter.GET("/:post_id", postHandler.GetPostByID)          // @Tags 帖子
 	}
 
 	uploadRouter := protectedRouter.Group("/uploads")
@@ -127,7 +140,7 @@ func main() {
 		uploadRouter.POST("/post", postHandler.AddPostImage)                // @Tags 帖子
 	}
 
-	fileRouter := protectedRouter.Group("/files")
+	fileRouter := appRouter.Group("/files")
 	{
 		fileRouter.GET("/avatar/:filename", avatarHandler.AvatarsHandler) // @Tags 头像
 		fileRouter.GET("/post/:filename", postHandler.HandlePostImage)    // @Tags 帖子

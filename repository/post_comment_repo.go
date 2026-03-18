@@ -35,7 +35,15 @@ func (r *PostCommentRepository) Delete(id uint64) error {
 	return r.db.Delete(&models.PostComment{}, id).Error
 }
 
-// DeleteByPostID 删除某帖子的所有评论
 func (r *PostCommentRepository) DeleteByPostID(postID uint64) error {
 	return r.db.Where("post_id = ?", postID).Delete(&models.PostComment{}).Error
+}
+
+func (r *PostCommentRepository) GetByID(id uint64) (*models.PostComment, error) {
+	var comment models.PostComment
+	err := r.db.First(&comment, id).Error
+	if err != nil {
+		return nil, err
+	}
+	return &comment, nil
 }

@@ -20,7 +20,7 @@ func (r *PostRepository) Create(post *models.CommunityPost) error {
 
 func (r *PostRepository) GetByID(id uint64) (*models.CommunityPost, error) {
 	var p models.CommunityPost
-	err := r.db.Where("id = ?", id).First(&p).Error
+	err := r.db.Preload("Images").Preload("Comments").Where("id = ?", id).First(&p).Error
 	return &p, err
 }
 
