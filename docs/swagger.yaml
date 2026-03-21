@@ -1,5 +1,45 @@
 basePath: /app
 definitions:
+  enums.CreditScoreLevel:
+    enum:
+    - 0
+    - 1
+    - 2
+    type: integer
+    x-enum-comments:
+      LevelDanger: "0"
+      LevelGood: "2"
+      LevelMidium: "1"
+    x-enum-descriptions:
+    - "0"
+    - "1"
+    - "2"
+    x-enum-varnames:
+    - LevelDanger
+    - LevelMidium
+    - LevelGood
+  handlers.AddEntrustImageRequest:
+    properties:
+      entrust_id:
+        description: 委托ID
+        type: integer
+      image:
+        description: |-
+          图像文件
+          @in formData
+          @type file
+          @required
+        type: string
+    type: object
+  handlers.AddEntrustImageResponse:
+    properties:
+      message:
+        example: 上传成功
+        type: string
+      success:
+        example: true
+        type: boolean
+    type: object
   handlers.AddPostImageRequest:
     properties:
       image:
@@ -28,7 +68,28 @@ definitions:
         example: /avatars/xxxx.png
         type: string
     type: object
-  handlers.CreateCommentRequest:
+  handlers.CreateEntrustCommentRequest:
+    properties:
+      content:
+        description: 评论内容
+        type: string
+      entrust_id:
+        description: 帖子ID
+        type: integer
+    required:
+    - content
+    - entrust_id
+    type: object
+  handlers.CreateEntrustCommentResponse:
+    properties:
+      message:
+        example: 评论成功
+        type: string
+      success:
+        example: true
+        type: boolean
+    type: object
+  handlers.CreatePostCommentRequest:
     properties:
       content:
         description: 评论内容
@@ -40,7 +101,7 @@ definitions:
     - content
     - post_id
     type: object
-  handlers.CreateCommentResponse:
+  handlers.CreatePostCommentResponse:
     properties:
       message:
         example: 评论成功
@@ -49,7 +110,7 @@ definitions:
         example: true
         type: boolean
     type: object
-  handlers.DeleteCommentRequest:
+  handlers.DeleteEntrustCommentRequest:
     properties:
       comment_id:
         description: 评论ID
@@ -57,7 +118,36 @@ definitions:
     required:
     - comment_id
     type: object
-  handlers.DeleteCommentResponse:
+  handlers.DeleteEntrustCommentResponse:
+    properties:
+      message:
+        example: 删除成功
+        type: string
+      success:
+        example: true
+        type: boolean
+    type: object
+  handlers.DeleteEntrustRequest:
+    properties:
+      entrust_id:
+        type: integer
+    type: object
+  handlers.DeleteEntrustResponse:
+    properties:
+      message:
+        type: string
+      success:
+        type: boolean
+    type: object
+  handlers.DeletePostCommentRequest:
+    properties:
+      comment_id:
+        description: 评论ID
+        type: integer
+    required:
+    - comment_id
+    type: object
+  handlers.DeletePostCommentResponse:
     properties:
       message:
         example: 删除成功
@@ -114,11 +204,44 @@ definitions:
         example: invalid request
         type: string
     type: object
-  handlers.GetCommentsResponse:
+  handlers.GetEntrustByIDResponse:
+    properties:
+      data:
+        $ref: '#/definitions/models.CommunityEntrust'
+      message:
+        type: string
+      success:
+        type: boolean
+    type: object
+  handlers.GetEntrustByUserRequest:
+    properties:
+      page:
+        type: integer
+      page_size:
+        type: integer
+      user_id:
+        type: integer
+    type: object
+  handlers.GetEntrustCommentsResponse:
     properties:
       data:
         items:
-          $ref: '#/definitions/models.PostComment'
+          $ref: '#/definitions/models.EntrustComment'
+        type: array
+      message:
+        type: string
+      page:
+        type: integer
+      success:
+        type: boolean
+      total:
+        type: integer
+    type: object
+  handlers.GetEntrustsResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/models.CommunityEntrust'
         type: array
       message:
         type: string
@@ -186,6 +309,21 @@ definitions:
       total:
         type: integer
     type: object
+  handlers.GetPostCommentsResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/models.PostComment'
+        type: array
+      message:
+        type: string
+      page:
+        type: integer
+      success:
+        type: boolean
+      total:
+        type: integer
+    type: object
   handlers.GetPostsResponse:
     properties:
       data:
@@ -200,6 +338,74 @@ definitions:
         type: boolean
       total:
         type: integer
+    type: object
+  handlers.LikeEntrustCommentRequest:
+    properties:
+      comment_id:
+        description: 评论ID
+        type: integer
+    required:
+    - comment_id
+    type: object
+  handlers.LikeEntrustCommentResponse:
+    properties:
+      message:
+        example: 删除成功
+        type: string
+      success:
+        example: true
+        type: boolean
+    type: object
+  handlers.LikeEntrustRequest:
+    properties:
+      entrust_id:
+        description: 委托ID
+        type: integer
+    required:
+    - entrust_id
+    type: object
+  handlers.LikeEntrustResponse:
+    properties:
+      message:
+        example: 删除成功
+        type: string
+      success:
+        example: true
+        type: boolean
+    type: object
+  handlers.LikePostCommentRequest:
+    properties:
+      comment_id:
+        description: 评论ID
+        type: integer
+    required:
+    - comment_id
+    type: object
+  handlers.LikePostCommentResponse:
+    properties:
+      message:
+        example: 删除成功
+        type: string
+      success:
+        example: true
+        type: boolean
+    type: object
+  handlers.LikePostRequest:
+    properties:
+      post_id:
+        description: 帖子ID
+        type: integer
+    required:
+    - post_id
+    type: object
+  handlers.LikePostResponse:
+    properties:
+      message:
+        example: 删除成功
+        type: string
+      success:
+        example: true
+        type: boolean
     type: object
   handlers.LoginRequest:
     properties:
@@ -231,6 +437,24 @@ definitions:
         type: integer
       refresh_token:
         type: string
+    type: object
+  handlers.NewEntrustRequest:
+    properties:
+      allowed_credit_score_level:
+        $ref: '#/definitions/enums.CreditScoreLevel'
+      coin:
+        type: integer
+      content:
+        type: string
+      title:
+        type: string
+    type: object
+  handlers.NewEntrustResponse:
+    properties:
+      message:
+        type: string
+      success:
+        type: boolean
     type: object
   handlers.NewPostRequest:
     properties:
@@ -307,6 +531,74 @@ definitions:
       user_id:
         type: integer
     type: object
+  handlers.UnlikeEntrustCommentRequest:
+    properties:
+      comment_id:
+        description: 评论ID
+        type: integer
+    required:
+    - comment_id
+    type: object
+  handlers.UnlikeEntrustCommentResponse:
+    properties:
+      message:
+        example: 删除成功
+        type: string
+      success:
+        example: true
+        type: boolean
+    type: object
+  handlers.UnlikeEntrustRequest:
+    properties:
+      entrust_id:
+        description: 委托ID
+        type: integer
+    required:
+    - entrust_id
+    type: object
+  handlers.UnlikeEntrustResponse:
+    properties:
+      message:
+        example: 删除成功
+        type: string
+      success:
+        example: true
+        type: boolean
+    type: object
+  handlers.UnlikePostCommentRequest:
+    properties:
+      comment_id:
+        description: 评论ID
+        type: integer
+    required:
+    - comment_id
+    type: object
+  handlers.UnlikePostCommentResponse:
+    properties:
+      message:
+        example: 删除成功
+        type: string
+      success:
+        example: true
+        type: boolean
+    type: object
+  handlers.UnlikePostRequest:
+    properties:
+      post_id:
+        description: 帖子ID
+        type: integer
+    required:
+    - post_id
+    type: object
+  handlers.UnlikePostResponse:
+    properties:
+      message:
+        example: 删除成功
+        type: string
+      success:
+        example: true
+        type: boolean
+    type: object
   handlers.UploadAvatarRequest:
     properties:
       avatar:
@@ -355,12 +647,55 @@ definitions:
         example: true
         type: boolean
     type: object
+  models.CommunityEntrust:
+    properties:
+      allowed_credit_score_level:
+        $ref: '#/definitions/enums.CreditScoreLevel'
+      content:
+        type: string
+      create_time:
+        type: string
+      credit_coin:
+        type: integer
+      id:
+        type: integer
+      images:
+        items:
+          $ref: '#/definitions/models.CommunityEntrustImage'
+        type: array
+      is_over:
+        type: boolean
+      is_progressing:
+        type: boolean
+      like_count:
+        type: integer
+      qr_code:
+        $ref: '#/definitions/models.CommunityEntrustQRCode'
+      title:
+        type: string
+      user_id:
+        type: integer
+    type: object
+  models.CommunityEntrustImage:
+    properties:
+      entrust_id:
+        type: integer
+      id:
+        type: integer
+      image_url:
+        type: string
+    type: object
+  models.CommunityEntrustQRCode:
+    properties:
+      entrust_id:
+        type: integer
+      id:
+        type: integer
+      qr_code_url:
+        type: string
+    type: object
   models.CommunityPost:
     properties:
-      comments:
-        items:
-          $ref: '#/definitions/models.PostComment'
-        type: array
       content:
         type: string
       create_time:
@@ -371,7 +706,7 @@ definitions:
         items:
           $ref: '#/definitions/models.CommunityPostImage'
         type: array
-      like:
+      like_count:
         type: integer
       title:
         type: string
@@ -387,13 +722,26 @@ definitions:
       post_id:
         type: integer
     type: object
+  models.EntrustComment:
+    properties:
+      content:
+        type: string
+      entrust_id:
+        type: integer
+      id:
+        type: integer
+      like_count:
+        type: integer
+      user_id:
+        type: integer
+    type: object
   models.PostComment:
     properties:
       content:
         type: string
       id:
         type: integer
-      like:
+      like_count:
         type: integer
       post_id:
         type: integer
@@ -414,7 +762,7 @@ info:
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: http://swagger.io/terms/
   title: sp_backend API
-  version: 1.2.5
+  version: 1.2.8
 paths:
   /app/auth/login:
     post:
@@ -506,6 +854,377 @@ paths:
       summary: 用户注册
       tags:
       - 认证
+  /app/entrust/{entrust_id}:
+    get:
+      consumes:
+      - application/json
+      description: 给ID拿委托
+      parameters:
+      - description: 委托ID
+        format: int64
+        in: path
+        name: entrust_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.GetEntrustByIDResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 获取委托
+      tags:
+      - 委托
+  /app/entrust/comment:
+    get:
+      consumes:
+      - application/json
+      description: 分页获取指定委托的评论列表，按创建时间倒序
+      parameters:
+      - description: 委托ID
+        format: int64
+        in: query
+        name: entrust_id
+        required: true
+        type: integer
+      - default: 1
+        description: 页码
+        format: int32
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: 每页数量
+        format: int32
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.GetEntrustCommentsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 获取评论列表
+      tags:
+      - 委托
+    post:
+      consumes:
+      - application/json
+      description: 为指定委托创建一条新评论，需要用户登录认证
+      parameters:
+      - description: 评论创建请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CreateEntrustCommentRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/handlers.CreateEntrustCommentResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 创建评论
+      tags:
+      - 委托
+  /app/entrust/comment/delete:
+    post:
+      consumes:
+      - application/json
+      description: 删除指定评论，仅评论作者或管理员可操作
+      parameters:
+      - description: 评论删除请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.DeleteEntrustCommentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.DeleteEntrustCommentResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 删除评论
+      tags:
+      - 委托
+  /app/entrust/comment/like:
+    post:
+      consumes:
+      - application/json
+      description: 点赞评论,需要登陆
+      parameters:
+      - description: 点赞请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.LikeEntrustCommentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.LikeEntrustCommentResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 点赞评论
+      tags:
+      - 委托
+  /app/entrust/comment/unlike:
+    post:
+      consumes:
+      - application/json
+      description: 取消对评论的点赞,需要登陆
+      parameters:
+      - description: 取消点赞请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.UnlikeEntrustCommentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.UnlikeEntrustCommentResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "409":
+          description: 未点赞，无法取消
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 取消点赞评论
+      tags:
+      - 委托
+  /app/entrust/delete:
+    post:
+      consumes:
+      - application/json
+      description: 删委托
+      parameters:
+      - description: 委托删除请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.DeleteEntrustRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.DeleteEntrustResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 删委托
+      tags:
+      - 委托
+  /app/entrust/like:
+    post:
+      consumes:
+      - application/json
+      description: 点赞委托,需要登陆
+      parameters:
+      - description: 点赞请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.LikeEntrustRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.LikeEntrustResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 点赞委托
+      tags:
+      - 委托
+  /app/entrust/list:
+    get:
+      consumes:
+      - application/json
+      description: 分页获取社区委托列表，默认按创建时间倒序
+      parameters:
+      - default: 1
+        description: 页码
+        format: int32
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: 每页数量
+        format: int32
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.GetEntrustsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 获取委托列表
+      tags:
+      - 委托
+  /app/entrust/new:
+    post:
+      consumes:
+      - application/json
+      description: 发布委托（只能文字，图片有单独上传api，到时候拿文件列表遍历访问那个api）
+      parameters:
+      - description: 发布委托请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.NewEntrustRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.NewEntrustResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 发布委托
+      tags:
+      - 委托
+  /app/entrust/unlike:
+    post:
+      consumes:
+      - application/json
+      description: 取消委托的点赞,需要登陆
+      parameters:
+      - description: 取消点赞请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.UnlikeEntrustRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.UnlikeEntrustResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "409":
+          description: 未点赞，无法取消
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 取消点赞委托
+      tags:
+      - 委托
   /app/files/avatar/{filename}:
     get:
       description: 通过文件名访问头像图片，禁止路径遍历和目录列表
@@ -536,6 +1255,36 @@ paths:
       summary: 获取用户头像
       tags:
       - 头像
+  /app/files/entrust/{filename}:
+    get:
+      description: 通过文件名访问委托图片，禁止路径遍历和目录列表
+      parameters:
+      - description: 委托文件名
+        in: path
+        name: filename
+        required: true
+        type: string
+      produces:
+      - image/png
+      - image/jpeg
+      - image/gif
+      - image/webp
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 获取委托图片
+      tags:
+      - 委托
   /app/files/post/{filename}:
     get:
       description: 通过文件名访问帖子图片，禁止路径遍历和目录列表
@@ -626,7 +1375,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.GetCommentsResponse'
+            $ref: '#/definitions/handlers.GetPostCommentsResponse'
         "400":
           description: Bad Request
           schema:
@@ -648,14 +1397,14 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/handlers.CreateCommentRequest'
+          $ref: '#/definitions/handlers.CreatePostCommentRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/handlers.CreateCommentResponse'
+            $ref: '#/definitions/handlers.CreatePostCommentResponse'
         "400":
           description: Bad Request
           schema:
@@ -678,14 +1427,14 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/handlers.DeleteCommentRequest'
+          $ref: '#/definitions/handlers.DeletePostCommentRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.DeleteCommentResponse'
+            $ref: '#/definitions/handlers.DeletePostCommentResponse'
         "400":
           description: Bad Request
           schema:
@@ -699,6 +1448,78 @@ paths:
           schema:
             $ref: '#/definitions/handlers.ErrorResponse'
       summary: 删除评论
+      tags:
+      - 帖子
+  /app/post/comment/like:
+    post:
+      consumes:
+      - application/json
+      description: 点赞评论,需要登陆
+      parameters:
+      - description: 点赞请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.LikePostCommentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.LikePostCommentResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 点赞评论
+      tags:
+      - 帖子
+  /app/post/comment/unlike:
+    post:
+      consumes:
+      - application/json
+      description: 取消对评论的点赞,需要登陆
+      parameters:
+      - description: 取消点赞请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.UnlikePostCommentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.UnlikePostCommentResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "409":
+          description: 未点赞，无法取消
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 取消点赞评论
       tags:
       - 帖子
   /app/post/delete:
@@ -729,6 +1550,40 @@ paths:
           schema:
             $ref: '#/definitions/handlers.ErrorResponse'
       summary: 删帖
+      tags:
+      - 帖子
+  /app/post/like:
+    post:
+      consumes:
+      - application/json
+      description: 点赞帖子,需要登陆
+      parameters:
+      - description: 点赞请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.LikePostRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.LikePostResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 点赞帖子
       tags:
       - 帖子
   /app/post/list:
@@ -769,7 +1624,7 @@ paths:
       - application/json
       description: 发帖（只能文字，图片有单独上传api，到时候拿文件列表遍历访问那个api）
       parameters:
-      - description: 上传用户自己头像表单
+      - description: 发布帖子请求
         in: body
         name: request
         required: true
@@ -791,6 +1646,44 @@ paths:
           schema:
             $ref: '#/definitions/handlers.ErrorResponse'
       summary: 发帖
+      tags:
+      - 帖子
+  /app/post/unlike:
+    post:
+      consumes:
+      - application/json
+      description: 取消帖子的点赞,需要登陆
+      parameters:
+      - description: 取消点赞请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.UnlikePostRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.UnlikePostResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "409":
+          description: 未点赞，无法取消
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 取消点赞帖子
       tags:
       - 帖子
   /app/uploads/avatar:
@@ -853,13 +1746,43 @@ paths:
       summary: 上传用户头像
       tags:
       - 头像
+  /app/uploads/entrust:
+    post:
+      consumes:
+      - multipart/form-data
+      description: 拿图片文件列表遍历访问我 注意！！那个image是string类型是错的应该为file文件
+      parameters:
+      - description: 上传自定义图片表单
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.AddEntrustImageRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.AddEntrustImageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 添加图片
+      tags:
+      - 委托
   /app/uploads/post:
     post:
       consumes:
       - multipart/form-data
       description: 拿图片文件列表遍历访问我 注意！！那个image是string类型是错的应该为file文件
       parameters:
-      - description: 上传用户自己头像表单
+      - description: 上传自定义图片表单
         in: body
         name: request
         required: true
@@ -881,6 +1804,90 @@ paths:
           schema:
             $ref: '#/definitions/handlers.ErrorResponse'
       summary: 添加图片
+      tags:
+      - 帖子
+  /app/user/{user_id}/entrusts:
+    get:
+      consumes:
+      - application/json
+      description: 分页获取指定用户发布的委托列表
+      parameters:
+      - description: 用户ID
+        format: int64
+        in: path
+        name: user_id
+        required: true
+        type: integer
+      - default: 1
+        description: 页码
+        format: int32
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: 每页数量
+        format: int32
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.GetEntrustByUserRequest'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 获取用户委托
+      tags:
+      - 委托
+  /app/user/{user_id}/posts:
+    get:
+      consumes:
+      - application/json
+      description: 分页获取指定用户发布的帖子列表
+      parameters:
+      - description: 用户ID
+        format: int64
+        in: path
+        name: user_id
+        required: true
+        type: integer
+      - default: 1
+        description: 页码
+        format: int32
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: 每页数量
+        format: int32
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.GetPostByUserResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 获取用户帖子
       tags:
       - 帖子
   /app/user/edit:
@@ -966,48 +1973,6 @@ paths:
       summary: 获取用户信息
       tags:
       - 用户
-  /app/users/{user_id}/posts:
-    get:
-      consumes:
-      - application/json
-      description: 分页获取指定用户发布的帖子列表
-      parameters:
-      - description: 用户ID
-        format: int64
-        in: path
-        name: user_id
-        required: true
-        type: integer
-      - default: 1
-        description: 页码
-        format: int32
-        in: query
-        name: page
-        type: integer
-      - default: 20
-        description: 每页数量
-        format: int32
-        in: query
-        name: page_size
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/handlers.GetPostByUserResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-      summary: 获取用户帖子
-      tags:
-      - 帖子
 schemes:
 - http
 - https

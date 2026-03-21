@@ -20,15 +20,7 @@ func (r *PostRepository) Create(post *models.CommunityPost) error {
 
 func (r *PostRepository) GetByID(id uint64) (*models.CommunityPost, error) {
 	var p models.CommunityPost
-	err := r.db.Preload("Images").Preload("Comments").Where("id = ?", id).First(&p).Error
-	return &p, err
-}
-
-func (r *PostRepository) GetWithImages(id uint64) (*models.CommunityPost, error) {
-	var p models.CommunityPost
-	err := r.db.Where("id = ?", id).
-		Preload("Images").
-		First(&p).Error
+	err := r.db.Preload("Images").Where("id = ?", id).First(&p).Error
 	return &p, err
 }
 
@@ -79,7 +71,6 @@ func (r *PostRepository) ListPostsWithPreload(page, pageSize int) ([]models.Comm
 
 	err := r.db.
 		Preload("Images").
-		Preload("Comments").
 		Order("create_time DESC").
 		Offset((page - 1) * pageSize).
 		Limit(pageSize).
@@ -97,7 +88,6 @@ func (r *PostRepository) ListByUserWithPreload(userID uint64, page, pageSize int
 
 	err := db.
 		Preload("Images").
-		Preload("Comments").
 		Order("create_time DESC").
 		Offset((page - 1) * pageSize).
 		Limit(pageSize).

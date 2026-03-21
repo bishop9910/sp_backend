@@ -20,16 +20,7 @@ func (r *EntrustRepository) Create(entrust *models.CommunityEntrust) error {
 
 func (r *EntrustRepository) GetByID(id uint64) (*models.CommunityEntrust, error) {
 	var e models.CommunityEntrust
-	err := r.db.Where("id = ?", id).First(&e).Error
-	return &e, err
-}
-
-// GetWithImages 预加载附图
-func (r *EntrustRepository) GetWithImages(id uint64) (*models.CommunityEntrust, error) {
-	var e models.CommunityEntrust
-	err := r.db.Where("id = ?", id).
-		Preload("Images").
-		First(&e).Error
+	err := r.db.Preload("Images").Preload("QRCode").Where("id = ?", id).First(&e).Error
 	return &e, err
 }
 
@@ -62,4 +53,39 @@ func (r *EntrustRepository) UpdateStatus(id uint64, progressing, over bool) erro
 			"is_progressing": progressing,
 			"is_over":        over,
 		}).Error
+}
+
+func (r *EntrustRepository) ListEntrustsWithPreload(page, pageSize int) ([]models.CommunityEntrust, int64, error) {
+	var entrusts []models.CommunityEntrust
+	var total int64
+
+	r.db.Model(&models.CommunityEntrust{}).Count(&total)
+
+	err := r.db.
+		Preload("Images").
+		Preload("QRCode").
+		Order("create_time DESC").
+		Offset((page - 1) * pageSize).
+		Limit(pageSize).
+		Find(&entrusts).Error
+
+	return entrusts, total, err
+}
+
+func (r *EntrustRepository) ListByUserWithPreload(userID uint64, page, pageSize int) ([]models.CommunityEntrust, int64, error) {
+	var entrusts []models.CommunityEntrust
+	var total int64
+
+	db := r.db.Model(&models.CommunityEntrust{}).Where("user_id = ?", userID)
+	db.Count(&total)
+
+	err := db.
+		Preload("Images").
+		Preload("QRCode").
+		Order("create_time DESC").
+		Offset((page - 1) * pageSize).
+		Limit(pageSize).
+		Find(&entrusts).Error
+
+	return entrusts, total, err
 }

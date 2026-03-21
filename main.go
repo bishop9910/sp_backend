@@ -21,7 +21,7 @@ import (
 )
 
 // @title           sp_backend API
-// @version         1.2.5
+// @version         1.2.8
 // @description     社区平台 API 文档，包含用户、帖子、委托等功能
 // @termsOfService  http://swagger.io/terms/
 
@@ -53,9 +53,11 @@ func main() {
 		&models.CommunityEntrust{},
 		&models.CommunityPost{},
 		&models.CommunityEntrustImage{},
+		&models.CommunityEntrustQRCode{},
 		&models.CommunityPostImage{},
 		&models.PostComment{},
 		&models.EntrustComment{},
+		&models.UserLike{},
 	)
 
 	secretKey := os.Getenv("JWT_SECRET")
@@ -91,6 +93,13 @@ func main() {
 	postImageRepo := repository.NewPostImageRepository(db)
 	postCommentRepo := repository.NewPostCommentRepository(db)
 
+	entrustRepo := repository.NewEntrustRepository(db)
+	entrustImageRepo := repository.NewEntrustImageRepository(db)
+	entrustCommentRepo := repository.NewEntrustCommentRepository(db)
+	entrustQRCodeRepo := repository.NewEntrustQRCodeRepository(db)
+
+	likeRepo := repository.NewLikeRepository(db)
+
 	authHandler := handlers.NewAuthHandler(userRepo, jwtConfig)
 	userHandler := handlers.NewUserHandler(userRepo, jwtConfig)
 	avatarHandler := handlers.NewAvatarHandler(userRepo, jwtConfig)
@@ -99,7 +108,17 @@ func main() {
 		PostRepo:        postRepo,
 		PostImageRepo:   postImageRepo,
 		PostCommentRepo: postCommentRepo,
+		LikeRepo:        likeRepo,
 		JwtConfig:       jwtConfig,
+	})
+	entrustHandler := handlers.NewEntrustHandler(&handlers.EntrustHandlerConfig{
+		UserRepo:           userRepo,
+		EntrustRepo:        entrustRepo,
+		EntrustImageRepo:   entrustImageRepo,
+		EntrustQRCodeRepo:  entrustQRCodeRepo,
+		EntrustCommentRepo: entrustCommentRepo,
+		LikeRepo:           likeRepo,
+		JwtConfig:          jwtConfig,
 	})
 
 	appRouter := server.Group("/app")
@@ -116,21 +135,41 @@ func main() {
 
 	userRouter := protectedRouter.Group("/user")
 	{
-		userRouter.GET("/get-info", userHandler.GetInfo)             // @Tags 用户
-		userRouter.POST("/edit", userHandler.Edit)                   // @Tags 用户
-		userRouter.POST("/edit-other", userHandler.EditOther)        // @Tags 用户
-		userRouter.GET("/:user_id/posts", postHandler.GetPostByUser) // @Tags 用户
+		userRouter.GET("/get-info", userHandler.GetInfo)                      // @Tags 用户
+		userRouter.POST("/edit", userHandler.Edit)                            // @Tags 用户
+		userRouter.POST("/edit-other", userHandler.EditOther)                 // @Tags 用户
+		userRouter.GET("/:user_id/posts", postHandler.GetPostByUser)          // @Tags 帖子
+		userRouter.GET("/:user_id/entrusts", entrustHandler.GetEntrustByUser) // @Tags 委托
 	}
 
 	postRouter := protectedRouter.Group("/post")
 	{
-		postRouter.GET("/list", postHandler.GetPosts)                 // @Tags 帖子
-		postRouter.POST("/new", postHandler.NewPost)                  // @Tags 帖子
-		postRouter.POST("/delete", postHandler.DeletePost)            // @Tags 帖子
-		postRouter.POST("/comment", postHandler.CreateComment)        // @Tags 帖子
-		postRouter.GET("/comment", postHandler.GetComments)           // @Tags 帖子
-		postRouter.POST("/comment/delete", postHandler.DeleteComment) // @Tags 帖子
-		postRouter.GET("/:post_id", postHandler.GetPostByID)          // @Tags 帖子
+		postRouter.GET("/list", postHandler.GetPosts)                     // @Tags 帖子
+		postRouter.POST("/new", postHandler.NewPost)                      // @Tags 帖子
+		postRouter.POST("/delete", postHandler.DeletePost)                // @Tags 帖子
+		postRouter.POST("/comment", postHandler.CreatePostComment)        // @Tags 帖子
+		postRouter.GET("/comment", postHandler.GetPostComments)           // @Tags 帖子
+		postRouter.POST("/comment/delete", postHandler.DeletePostComment) // @Tags 帖子
+		postRouter.GET("/:post_id", postHandler.GetPostByID)              // @Tags 帖子
+		postRouter.POST("/like", postHandler.LikePost)                    // @Tags 帖子
+		postRouter.POST("/unlike", postHandler.UnlikePost)                // @Tags 帖子
+		postRouter.POST("/comment/like", postHandler.LikePostComment)     // @Tags 帖子
+		postRouter.POST("/comment/unlike", postHandler.UnlikePostComment) // @Tags 帖子
+	}
+
+	entrustRouter := protectedRouter.Group("/entrust")
+	{
+		entrustRouter.GET("/list", entrustHandler.GetEntrusts)                     // @Tags 委托
+		entrustRouter.POST("/new", entrustHandler.NewEnturst)                      // @Tags 委托
+		entrustRouter.POST("/delete", entrustHandler.DeleteEntrust)                // @Tags 委托
+		entrustRouter.POST("/comment", entrustHandler.CreateEntrustComment)        // @Tags 委托
+		entrustRouter.GET("/comment", entrustHandler.GetEntrustComments)           // @Tags 委托
+		entrustRouter.POST("/comment/delete", entrustHandler.DeleteEntrustComment) // @Tags 委托
+		entrustRouter.GET("/:entrust_id", entrustHandler.GetEntrustByID)           // @Tags 委托
+		entrustRouter.POST("/like", entrustHandler.LikeEntrust)                    // @Tags 委托
+		entrustRouter.POST("/unlike", entrustHandler.UnlikeEntrust)                // @Tags 委托
+		entrustRouter.POST("/comment/like", entrustHandler.LikeEntrustComment)     // @Tags 委托
+		entrustRouter.POST("/comment/unlike", entrustHandler.UnlikeEntrustComment) // @Tags 委托
 	}
 
 	uploadRouter := protectedRouter.Group("/uploads")
@@ -138,12 +177,14 @@ func main() {
 		uploadRouter.POST("/avatar", avatarHandler.UploadAvatar)            // @Tags 头像
 		uploadRouter.POST("/avatar-other", avatarHandler.UploadOtherAvatar) // @Tags 头像
 		uploadRouter.POST("/post", postHandler.AddPostImage)                // @Tags 帖子
+		uploadRouter.POST("/entrust", entrustHandler.AddEntrustImage)       // @Tags 委托
 	}
 
 	fileRouter := appRouter.Group("/files")
 	{
-		fileRouter.GET("/avatar/:filename", avatarHandler.AvatarsHandler) // @Tags 头像
-		fileRouter.GET("/post/:filename", postHandler.HandlePostImage)    // @Tags 帖子
+		fileRouter.GET("/avatar/:filename", avatarHandler.AvatarsHandler)       // @Tags 头像
+		fileRouter.GET("/post/:filename", postHandler.HandlePostImage)          // @Tags 帖子
+		fileRouter.GET("/entrust/:filename", entrustHandler.HandleEntrustImage) // @Tags 委托
 	}
 
 	server.Run(":8080")

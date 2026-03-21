@@ -22,6 +22,7 @@ type PostHandler struct {
 	postRepo        *repository.PostRepository
 	postImageRepo   *repository.PostImageRepository
 	postCommentRepo *repository.PostCommentRepository
+	likeRepo        *repository.LikeRepository
 	jwtConfig       *utils.JWTConfig
 	postImageConfig *PostImageConfig
 }
@@ -31,6 +32,7 @@ type PostHandlerConfig struct {
 	PostRepo        *repository.PostRepository
 	PostImageRepo   *repository.PostImageRepository
 	PostCommentRepo *repository.PostCommentRepository
+	LikeRepo        *repository.LikeRepository
 	JwtConfig       *utils.JWTConfig
 }
 
@@ -47,6 +49,7 @@ func NewPostHandler(config *PostHandlerConfig) *PostHandler {
 		postImageRepo:   config.PostImageRepo,
 		postCommentRepo: config.PostCommentRepo,
 		jwtConfig:       config.JwtConfig,
+		likeRepo:        config.LikeRepo,
 		postImageConfig: &PostImageConfig{
 			imageDir:      "./uploads/post_images",
 			maxUploadSize: 10 * 1024 * 1024,
@@ -71,13 +74,13 @@ type NewPostResponse struct {
 	Message string `json:"message"`
 }
 
-// AddPostImage 发帖
+// NewPost 发帖
 // @Summary      发帖
 // @Description  发帖（只能文字，图片有单独上传api，到时候拿文件列表遍历访问那个api）
 // @Tags         帖子
 // @Accept       json
 // @Produce      json
-// @Param        request  body      NewPostRequest  true  "上传用户自己头像表单"
+// @Param        request  body      NewPostRequest  true  "发布帖子请求"
 // @Success      200      {object}  NewPostResponse
 // @Failure      400      {object}  ErrorResponse
 // @Failure      401      {object}  ErrorResponse
@@ -89,48 +92,33 @@ func (h *PostHandler) NewPost(c *gin.Context) {
 		return
 	}
 
-	authHeader := c.GetHeader("Authorization")
-	if authHeader == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing authorization header"})
+	_userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "user not found"})
 		c.Abort()
 		return
 	}
 
-	const bearerPrefix = "Bearer "
-	if len(authHeader) < len(bearerPrefix) || authHeader[:len(bearerPrefix)] != bearerPrefix {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid authorization format"})
-		c.Abort()
-		return
-	}
-	token := authHeader[len(bearerPrefix):]
-
-	claims, err := h.jwtConfig.ParseToken(token)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid authorization"})
-		c.Abort()
-		return
-	}
+	UserID := _userID.(uint64)
 
 	if req.Title == "" {
 		req.Title = "未命名标题"
 	}
 	if len(req.Content) == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"message": "帖子内容不能为空",
+			"error": "帖子内容不能为空",
 		})
 		return
 	}
 	if len(req.Content) > 65535 {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"message": "帖子内容过长",
+			"error": "帖子内容过长",
 		})
 		return
 	}
 
 	newPost := &models.CommunityPost{
-		UserID:  claims.UserID,
+		UserID:  UserID,
 		Title:   req.Title,
 		Content: req.Content,
 	}
@@ -173,7 +161,7 @@ type AddPostImageResponse struct {
 // @Tags         帖子
 // @Accept       multipart/form-data
 // @Produce      json
-// @Param        request  body      AddPostImageRequest  true  "上传用户自己头像表单"
+// @Param        request  body      AddPostImageRequest  true  "上传自定义图片表单"
 // @Success      200      {object}  AddPostImageResponse
 // @Failure      400      {object}  ErrorResponse
 // @Failure      401      {object}  ErrorResponse
@@ -181,27 +169,14 @@ type AddPostImageResponse struct {
 func (h *PostHandler) AddPostImage(c *gin.Context) {
 	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, h.postImageConfig.maxUploadSize)
 
-	authHeader := c.GetHeader("Authorization")
-	if authHeader == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing authorization header"})
+	_userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "user not found"})
 		c.Abort()
 		return
 	}
 
-	const bearerPrefix = "Bearer "
-	if len(authHeader) < len(bearerPrefix) || authHeader[:len(bearerPrefix)] != bearerPrefix {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid authorization format"})
-		c.Abort()
-		return
-	}
-	token := authHeader[len(bearerPrefix):]
-
-	claims, err := h.jwtConfig.ParseToken(token)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("%v", err)})
-		c.Abort()
-		return
-	}
+	UserID := _userID.(uint64)
 
 	postIDStr := c.PostForm("post_id")
 	postID, err := strconv.ParseUint(postIDStr, 10, 64)
@@ -218,7 +193,7 @@ func (h *PostHandler) AddPostImage(c *gin.Context) {
 		return
 	}
 
-	user, err := h.userRepo.GetByID(claims.UserID)
+	user, err := h.userRepo.GetByID(UserID)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid authorization"})
 		c.Abort()
@@ -284,10 +259,6 @@ func (h *PostHandler) AddPostImage(c *gin.Context) {
 		Message: "upload image successfully",
 	})
 }
-
-// func (h *PostHandler) Comment(c *gin.Context) {
-
-// }
 
 // GetPostsRequest 获取帖子列表请求
 type GetPostsRequest struct {
@@ -372,7 +343,7 @@ type GetPostByUserResponse = GetPostsResponse
 // @Success      200      {object}  GetPostByUserResponse
 // @Failure      400      {object}  ErrorResponse
 // @Failure      404      {object}  ErrorResponse
-// @Router       /app/users/{user_id}/posts [get]
+// @Router       /app/user/{user_id}/posts [get]
 func (h *PostHandler) GetPostByUser(c *gin.Context) {
 	var req GetPostByUserRequest
 	if userID, err := strconv.ParseUint(c.Param("user_id"), 10, 64); err == nil {
@@ -433,7 +404,7 @@ type GetPostByIDResponse struct {
 	Data    models.CommunityPost `json:"data"`
 }
 
-// GetPostByUser 获取指定ID的帖子
+// GetPostByID 获取指定ID的帖子
 // @Summary      获取帖子
 // @Description  给ID拿帖子
 // @Tags         帖子
@@ -494,41 +465,29 @@ func (h *PostHandler) DeletePost(c *gin.Context) {
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
-		return
-	}
-
-	authHeader := c.GetHeader("Authorization")
-	if authHeader == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing authorization header"})
 		c.Abort()
 		return
 	}
 
-	const bearerPrefix = "Bearer "
-	if len(authHeader) < len(bearerPrefix) || authHeader[:len(bearerPrefix)] != bearerPrefix {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid authorization format"})
-		c.Abort()
-		return
-	}
-	token := authHeader[len(bearerPrefix):]
-
-	claims, err := h.jwtConfig.ParseToken(token)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid authorization"})
+	_userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "user not found"})
 		c.Abort()
 		return
 	}
 
-	post, err := h.postRepo.GetByID(claims.UserID)
+	UserID := _userID.(uint64)
+
+	post, err := h.postRepo.GetByID(req.PostID)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": fmt.Sprintf("%v", err)})
 		c.Abort()
 		return
 	}
 
-	user, err := h.userRepo.GetByID(claims.UserID)
+	user, err := h.userRepo.GetByID(UserID)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid authorization"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": fmt.Sprintf("%v", err)})
 		c.Abort()
 		return
 	}
@@ -547,12 +506,16 @@ func (h *PostHandler) DeletePost(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error": "fail to delete images",
 			})
+			c.Abort()
+			return
 		}
-		h.postImageRepo.Delete(post.Images[i].ID)
+		err = h.postImageRepo.Delete(post.Images[i].ID)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error": "fail to delete images",
 			})
+			c.Abort()
+			return
 		}
 	}
 
@@ -561,11 +524,144 @@ func (h *PostHandler) DeletePost(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "fail to delete post",
 		})
+		c.Abort()
+		return
 	}
 
 	c.JSON(http.StatusOK, DeletePostResponse{
 		Success: true,
 		Message: "delete successfully",
+	})
+}
+
+// LikePostRequest 点赞请求
+type LikePostRequest struct {
+	PostID uint64 `json:"post_id" binding:"required"` // 帖子ID
+}
+
+// LikePostResponse 点赞响应
+type LikePostResponse struct {
+	Success bool   `json:"success" example:"true"`
+	Message string `json:"message" example:"删除成功"`
+}
+
+// LikePost 点赞帖子
+// @Summary      点赞帖子
+// @Description  点赞帖子,需要登陆
+// @Tags         帖子
+// @Accept       json
+// @Produce      json
+// @Param        request  body      LikePostRequest  true  "点赞请求"
+// @Success      200      {object}  LikePostResponse
+// @Failure      400      {object}  ErrorResponse
+// @Failure      401      {object}  ErrorResponse
+// @Failure      403      {object}  ErrorResponse
+// @Router       /app/post/like [post]
+func (h *PostHandler) LikePost(c *gin.Context) {
+	var req LikePostRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		return
+	}
+
+	_userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "user not found"})
+		c.Abort()
+		return
+	}
+
+	UserID := _userID.(uint64)
+
+	target := &models.CommunityPost{ID: req.PostID}
+
+	likeErr := h.likeRepo.Like(UserID, target)
+
+	if likeErr != nil {
+		if errors.Is(likeErr, repository.ErrAlreadyLiked) {
+			c.JSON(http.StatusConflict, gin.H{
+				"error": "已经点过赞了",
+			})
+			return
+		}
+		if errors.Is(likeErr, repository.ErrNotLiked) {
+			c.JSON(http.StatusConflict, gin.H{
+				"error": "已经点过赞了",
+			})
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "服务器内部错误",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, LikePostResponse{
+		Success: true,
+		Message: "点赞成功",
+	})
+}
+
+type UnlikePostRequest = LikePostRequest
+type UnlikePostResponse = LikePostResponse
+
+// UnlikePost 取消点赞帖子
+// @Summary      取消点赞帖子
+// @Description  取消帖子的点赞,需要登陆
+// @Tags         帖子
+// @Accept       json
+// @Produce      json
+// @Param        request  body      UnlikePostRequest  true  "取消点赞请求"
+// @Success      200      {object}  UnlikePostResponse
+// @Failure      400      {object}  ErrorResponse
+// @Failure      401      {object}  ErrorResponse
+// @Failure      403      {object}  ErrorResponse
+// @Failure      409      {object}  ErrorResponse      "未点赞，无法取消"
+// @Router       /app/post/unlike [post]
+func (h *PostHandler) UnlikePost(c *gin.Context) {
+	var req UnlikePostRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		return
+	}
+
+	_userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "user not found"})
+		c.Abort()
+		return
+	}
+
+	UserID := _userID.(uint64)
+
+	target := &models.CommunityPost{ID: req.PostID}
+
+	unlikeErr := h.likeRepo.Unlike(UserID, target)
+
+	if unlikeErr != nil {
+		if errors.Is(unlikeErr, repository.ErrNotLiked) {
+			c.JSON(http.StatusConflict, gin.H{
+				"error": "尚未点赞，无法取消",
+			})
+			return
+		}
+		if errors.Is(unlikeErr, repository.ErrAlreadyLiked) {
+			c.JSON(http.StatusConflict, gin.H{
+				"error": "尚未点赞，无法取消",
+			})
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "服务器内部错误",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, UnlikePostResponse{
+		Success: true,
+		Message: "取消点赞成功",
 	})
 }
 
@@ -609,31 +705,31 @@ func (h *PostHandler) HandlePostImage(c *gin.Context) {
 	c.File(cleanPath)
 }
 
-// CreateCommentRequest 创建评论请求体
-type CreateCommentRequest struct {
+// CreatePostCommentRequest 创建评论请求体
+type CreatePostCommentRequest struct {
 	PostID  uint64 `json:"post_id" binding:"required"` // 帖子ID
 	Content string `json:"content" binding:"required"` // 评论内容
 }
 
-// CreateCommentResponse 创建评论响应
-type CreateCommentResponse struct {
+// CreatePostCommentResponse 创建评论响应
+type CreatePostCommentResponse struct {
 	Success bool   `json:"success" example:"true"`
 	Message string `json:"message" example:"评论成功"`
 }
 
-// CreateComment 创建评论
+// CreatePostComment 创建评论
 // @Summary      创建评论
 // @Description  为指定帖子创建一条新评论，需要用户登录认证
 // @Tags         帖子
 // @Accept       json
 // @Produce      json
-// @Param        request  body      CreateCommentRequest  true  "评论创建请求"
-// @Success      201      {object}  CreateCommentResponse
+// @Param        request  body      CreatePostCommentRequest  true  "评论创建请求"
+// @Success      201      {object}  CreatePostCommentResponse
 // @Failure      400      {object}  ErrorResponse
 // @Failure      401      {object}  ErrorResponse
 // @Router       /app/post/comment [post]
-func (h *PostHandler) CreateComment(c *gin.Context) {
-	var req CreateCommentRequest
+func (h *PostHandler) CreatePostComment(c *gin.Context) {
+	var req CreatePostCommentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request: " + err.Error()})
 		return
@@ -648,22 +744,14 @@ func (h *PostHandler) CreateComment(c *gin.Context) {
 		return
 	}
 
-	authHeader := c.GetHeader("Authorization")
-	if authHeader == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing authorization header"})
+	_userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "user not found"})
+		c.Abort()
 		return
 	}
-	const bearerPrefix = "Bearer "
-	if len(authHeader) < len(bearerPrefix) || authHeader[:len(bearerPrefix)] != bearerPrefix {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid authorization format"})
-		return
-	}
-	token := authHeader[len(bearerPrefix):]
-	claims, err := h.jwtConfig.ParseToken(token)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid authorization"})
-		return
-	}
+
+	UserID := _userID.(uint64)
 
 	post, err := h.postRepo.GetByID(req.PostID)
 	if err != nil || post.ID == 0 {
@@ -672,31 +760,31 @@ func (h *PostHandler) CreateComment(c *gin.Context) {
 	}
 
 	newComment := &models.PostComment{
-		UserID:  claims.UserID,
-		PostID:  req.PostID,
-		Content: req.Content,
-		Like:    0,
+		UserID:    UserID,
+		PostID:    req.PostID,
+		Content:   req.Content,
+		LikeCount: 0,
 	}
 	if err := h.postCommentRepo.Create(newComment); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create comment"})
 		return
 	}
 
-	c.JSON(http.StatusCreated, CreateCommentResponse{
+	c.JSON(http.StatusCreated, CreatePostCommentResponse{
 		Success: true,
 		Message: "comment created successfully",
 	})
 }
 
-// GetCommentsRequest 获取评论列表请求
-type GetCommentsRequest struct {
+// GetPostCommentsRequest 获取评论列表请求
+type GetPostCommentsRequest struct {
 	PostID   uint64 `json:"post_id" form:"post_id" binding:"required"` // 帖子ID
 	Page     uint16 `json:"page" form:"page"`                          // 页码，默认1
 	PageSize uint16 `json:"page_size" form:"page_size"`                // 每页数量，默认20
 }
 
-// GetCommentsResponse 获取评论列表响应
-type GetCommentsResponse struct {
+// GetPostCommentsResponse 获取评论列表响应
+type GetPostCommentsResponse struct {
 	Success bool                 `json:"success"`
 	Message string               `json:"message"`
 	Data    []models.PostComment `json:"data"`
@@ -704,7 +792,7 @@ type GetCommentsResponse struct {
 	Page    uint16               `json:"page"`
 }
 
-// GetComments 获取帖子评论列表
+// GetPostComments 获取帖子评论列表
 // @Summary      获取评论列表
 // @Description  分页获取指定帖子的评论列表，按创建时间倒序
 // @Tags         帖子
@@ -713,12 +801,12 @@ type GetCommentsResponse struct {
 // @Param        post_id  query  uint64  true   "帖子ID"
 // @Param        page     query  uint16  false  "页码"     default(1)
 // @Param        page_size query uint16  false  "每页数量"  default(20)
-// @Success      200      {object}  GetCommentsResponse
+// @Success      200      {object}  GetPostCommentsResponse
 // @Failure      400      {object}  ErrorResponse
 // @Failure      404      {object}  ErrorResponse
 // @Router       /app/post/comment [get]
-func (h *PostHandler) GetComments(c *gin.Context) {
-	var req GetCommentsRequest
+func (h *PostHandler) GetPostComments(c *gin.Context) {
+	var req GetPostCommentsRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
@@ -752,7 +840,7 @@ func (h *PostHandler) GetComments(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, GetCommentsResponse{
+	c.JSON(http.StatusOK, GetPostCommentsResponse{
 		Success: true,
 		Message: "success",
 		Data:    comments,
@@ -761,52 +849,44 @@ func (h *PostHandler) GetComments(c *gin.Context) {
 	})
 }
 
-// DeleteCommentRequest 删除评论请求
-type DeleteCommentRequest struct {
+// DeletePostCommentRequest 删除评论请求
+type DeletePostCommentRequest struct {
 	CommentID uint64 `json:"comment_id" binding:"required"` // 评论ID
 }
 
-// DeleteCommentResponse 删除评论响应
-type DeleteCommentResponse struct {
+// DeletePostCommentResponse 删除评论响应
+type DeletePostCommentResponse struct {
 	Success bool   `json:"success" example:"true"`
 	Message string `json:"message" example:"删除成功"`
 }
 
-// DeleteComment 删除评论
+// DeletePostComment 删除评论
 // @Summary      删除评论
 // @Description  删除指定评论，仅评论作者或管理员可操作
 // @Tags         帖子
 // @Accept       json
 // @Produce      json
-// @Param        request  body      DeleteCommentRequest  true  "评论删除请求"
-// @Success      200      {object}  DeleteCommentResponse
+// @Param        request  body      DeletePostCommentRequest  true  "评论删除请求"
+// @Success      200      {object}  DeletePostCommentResponse
 // @Failure      400      {object}  ErrorResponse
 // @Failure      401      {object}  ErrorResponse
 // @Failure      403      {object}  ErrorResponse
 // @Router       /app/post/comment/delete [post]
-func (h *PostHandler) DeleteComment(c *gin.Context) {
-	var req DeleteCommentRequest
+func (h *PostHandler) DeletePostComment(c *gin.Context) {
+	var req DeletePostCommentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
 		return
 	}
 
-	authHeader := c.GetHeader("Authorization")
-	if authHeader == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing authorization header"})
+	_userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "user not found"})
+		c.Abort()
 		return
 	}
-	const bearerPrefix = "Bearer "
-	if len(authHeader) < len(bearerPrefix) || authHeader[:len(bearerPrefix)] != bearerPrefix {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid authorization format"})
-		return
-	}
-	token := authHeader[len(bearerPrefix):]
-	claims, err := h.jwtConfig.ParseToken(token)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid authorization"})
-		return
-	}
+
+	UserID := _userID.(uint64)
 
 	comment, err := h.postCommentRepo.GetByID(req.CommentID)
 	if err != nil {
@@ -814,7 +894,7 @@ func (h *PostHandler) DeleteComment(c *gin.Context) {
 		return
 	}
 
-	user, err := h.userRepo.GetByID(claims.UserID)
+	user, err := h.userRepo.GetByID(UserID)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid authorization"})
 		return
@@ -830,8 +910,139 @@ func (h *PostHandler) DeleteComment(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, DeleteCommentResponse{
+	c.JSON(http.StatusOK, DeletePostCommentResponse{
 		Success: true,
 		Message: "comment deleted successfully",
+	})
+}
+
+// LikePostCommentRequest 点赞请求
+type LikePostCommentRequest struct {
+	CommentID uint64 `json:"comment_id" binding:"required"` // 评论ID
+}
+
+// LikePostCommentResponse 点赞响应
+type LikePostCommentResponse struct {
+	Success bool   `json:"success" example:"true"`
+	Message string `json:"message" example:"删除成功"`
+}
+
+// LikePostComment 点赞评论
+// @Summary      点赞评论
+// @Description  点赞评论,需要登陆
+// @Tags         帖子
+// @Accept       json
+// @Produce      json
+// @Param        request  body      LikePostCommentRequest  true  "点赞请求"
+// @Success      200      {object}  LikePostCommentResponse
+// @Failure      400      {object}  ErrorResponse
+// @Failure      401      {object}  ErrorResponse
+// @Failure      403      {object}  ErrorResponse
+// @Router       /app/post/comment/like [post]
+func (h *PostHandler) LikePostComment(c *gin.Context) {
+	var req LikePostCommentRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		return
+	}
+
+	_userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "user not found"})
+		c.Abort()
+		return
+	}
+
+	UserID := _userID.(uint64)
+
+	target := &models.PostComment{ID: req.CommentID}
+
+	likeErr := h.likeRepo.Like(UserID, target)
+
+	if likeErr != nil {
+		if errors.Is(likeErr, repository.ErrAlreadyLiked) {
+			c.JSON(http.StatusConflict, gin.H{
+				"error": "已经点过赞了",
+			})
+			return
+		}
+		if errors.Is(likeErr, repository.ErrNotLiked) {
+			c.JSON(http.StatusConflict, gin.H{
+				"error": "已经点过赞了",
+			})
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "服务器内部错误",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, LikePostCommentResponse{
+		Success: true,
+		Message: "点赞成功",
+	})
+}
+
+type UnlikePostCommentRequest = LikePostCommentRequest
+type UnlikePostCommentResponse = LikePostCommentResponse
+
+// UnlikePostComment 取消点赞评论
+// @Summary      取消点赞评论
+// @Description  取消对评论的点赞,需要登陆
+// @Tags         帖子
+// @Accept       json
+// @Produce      json
+// @Param        request  body      UnlikePostCommentRequest  true  "取消点赞请求"
+// @Success      200      {object}  UnlikePostCommentResponse
+// @Failure      400      {object}  ErrorResponse
+// @Failure      401      {object}  ErrorResponse
+// @Failure      403      {object}  ErrorResponse
+// @Failure      409      {object}  ErrorResponse      "未点赞，无法取消"
+// @Router       /app/post/comment/unlike [post]
+func (h *PostHandler) UnlikePostComment(c *gin.Context) {
+	var req UnlikePostCommentRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		return
+	}
+
+	_userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "user not found"})
+		c.Abort()
+		return
+	}
+
+	UserID := _userID.(uint64)
+
+	target := &models.PostComment{ID: req.CommentID}
+
+	unlikeErr := h.likeRepo.Unlike(UserID, target)
+
+	if unlikeErr != nil {
+		if errors.Is(unlikeErr, repository.ErrNotLiked) {
+			c.JSON(http.StatusConflict, gin.H{
+				"error": "尚未点赞，无法取消",
+			})
+			return
+		}
+		if errors.Is(unlikeErr, repository.ErrAlreadyLiked) {
+			c.JSON(http.StatusConflict, gin.H{
+				"error": "尚未点赞，无法取消",
+			})
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "服务器内部错误",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, UnlikePostCommentResponse{
+		Success: true,
+		Message: "取消点赞成功",
 	})
 }

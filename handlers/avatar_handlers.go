@@ -87,27 +87,14 @@ func (h *AvatarHandler) UploadAvatar(c *gin.Context) {
 		return
 	}
 
-	authHeader := c.GetHeader("Authorization")
-	if authHeader == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing authorization header"})
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "user not found"})
 		c.Abort()
 		return
 	}
 
-	const bearerPrefix = "Bearer "
-	if len(authHeader) < len(bearerPrefix) || authHeader[:len(bearerPrefix)] != bearerPrefix {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid authorization format"})
-		c.Abort()
-		return
-	}
-	token := authHeader[len(bearerPrefix):]
-
-	claims, err := h.jwtConfig.ParseToken(token)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid authorization"})
-		c.Abort()
-		return
-	}
+	UserID := userID.(uint64)
 
 	if !utils.ValidateFileType(file, h.avatarConfig.allowedMimeType) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "only allowed 'jpg, png, gif, webp' format"})
@@ -137,7 +124,7 @@ func (h *AvatarHandler) UploadAvatar(c *gin.Context) {
 
 	avatarURL := fmt.Sprintf("/files/avatar/%s", filename)
 
-	user, err := h.userRepo.GetByID(claims.UserID)
+	user, err := h.userRepo.GetByID(UserID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("%v", err)})
 		c.Abort()
@@ -151,14 +138,14 @@ func (h *AvatarHandler) UploadAvatar(c *gin.Context) {
 		if strings.HasPrefix(oldFilePath, h.avatarConfig.avatarDir) {
 			if err := os.Remove(oldFilePath); err != nil {
 				fmt.Println("delete old avatar failed",
-					"user_id", claims.UserID,
+					"user_id", UserID,
 					"old_path", oldFilePath,
 					"err", err)
 			}
 		}
 	}
 
-	err = h.userRepo.UpdateFields(claims.UserID, map[string]interface{}{
+	err = h.userRepo.UpdateFields(UserID, map[string]interface{}{
 		"avatar": avatarURL,
 	})
 	if err != nil {
@@ -218,28 +205,16 @@ func (h *AvatarHandler) UploadOtherAvatar(c *gin.Context) {
 		return
 	}
 
-	authHeader := c.GetHeader("Authorization")
-	if authHeader == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing authorization header"})
+	_userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "user not found"})
 		c.Abort()
 		return
 	}
 
-	const bearerPrefix = "Bearer "
-	if len(authHeader) < len(bearerPrefix) || authHeader[:len(bearerPrefix)] != bearerPrefix {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid authorization format"})
-		c.Abort()
-		return
-	}
-	token := authHeader[len(bearerPrefix):]
+	UserID := _userID.(uint64)
 
-	claims, err := h.jwtConfig.ParseToken(token)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid authorization"})
-		c.Abort()
-		return
-	}
-	adminUser, err := h.userRepo.GetByID(claims.UserID)
+	adminUser, err := h.userRepo.GetByID(UserID)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid authorization"})
 		c.Abort()
@@ -306,7 +281,7 @@ func (h *AvatarHandler) UploadOtherAvatar(c *gin.Context) {
 		if strings.HasPrefix(oldFilePath, h.avatarConfig.avatarDir) {
 			if err := os.Remove(oldFilePath); err != nil {
 				fmt.Println("delete old avatar failed",
-					"user_id", claims.UserID,
+					"user_id", UserID,
 					"old_path", oldFilePath,
 					"err", err)
 			}
