@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"net/http"
@@ -12,9 +14,11 @@ import (
 	"sp_backend/utils"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/skip2/go-qrcode"
 )
 
 type EntrustHandler struct {
@@ -80,10 +84,15 @@ type NewEntrustRequest struct {
 	CreditCoin              int                    `json:"coin"`
 }
 
+type NewEntrustData struct {
+	EntrustID uint64 `json:"entrust_id"`
+}
+
 // NewEntrustResponse
 type NewEntrustResponse struct {
-	Success bool   `json:"success"`
-	Message string `json:"message"`
+	Success bool           `json:"success"`
+	Message string         `json:"message"`
+	Data    NewEntrustData `json:"data"`
 }
 
 // NewEnturst 发布委托
@@ -147,6 +156,9 @@ func (h *EntrustHandler) NewEnturst(c *gin.Context) {
 	c.JSON(http.StatusCreated, NewEntrustResponse{
 		Success: true,
 		Message: "create entrust successfully",
+		Data: NewEntrustData{
+			EntrustID: newEntrust.ID,
+		},
 	})
 
 }
@@ -304,8 +316,7 @@ func (h *EntrustHandler) GetEntrusts(c *gin.Context) {
 	var req GetEntrustsRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"message": "参数解析失败: " + err.Error(),
+			"error": "参数解析失败: " + err.Error(),
 		})
 		return
 	}
@@ -320,8 +331,7 @@ func (h *EntrustHandler) GetEntrusts(c *gin.Context) {
 	posts, total, err := h.entrustRepo.ListEntrustsWithPreload(int(req.Page), int(req.PageSize))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"message": "查询帖子列表失败",
+			"error": "查询帖子列表失败",
 		})
 		return
 	}
@@ -365,16 +375,14 @@ func (h *EntrustHandler) GetEntrustByUser(c *gin.Context) {
 	}
 	if err := c.ShouldBindQuery(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"message": "参数解析失败: " + err.Error(),
+			"error": "参数解析失败: " + err.Error(),
 		})
 		return
 	}
 
 	if req.UserID == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"message": "user_id 不能为空",
+			"error": "user_id 不能为空",
 		})
 		return
 	}
@@ -388,8 +396,7 @@ func (h *EntrustHandler) GetEntrustByUser(c *gin.Context) {
 
 	if _, err := h.userRepo.GetByID(req.UserID); err != nil {
 		c.JSON(http.StatusNotFound, gin.H{
-			"success": false,
-			"message": "用户不存在",
+			"error": "用户不存在",
 		})
 		return
 	}
@@ -397,8 +404,7 @@ func (h *EntrustHandler) GetEntrustByUser(c *gin.Context) {
 	entrusts, total, err := h.entrustRepo.ListByUserWithPreload(req.UserID, int(req.Page), int(req.PageSize))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"message": "查询用户委托失败",
+			"error": "查询用户委托失败",
 		})
 		return
 	}
@@ -438,8 +444,7 @@ func (h *EntrustHandler) GetEntrustByID(c *gin.Context) {
 	entrust, err := h.entrustRepo.GetByID(EntrustID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"message": "查询帖子失败",
+			"error": "查询帖子失败",
 		})
 		return
 	}
@@ -697,7 +702,7 @@ func (h *EntrustHandler) UnlikeEntrust(c *gin.Context) {
 // @Description 通过文件名访问委托图片，禁止路径遍历和目录列表
 // @Tags 委托
 // @Produce image/png,image/jpeg,image/gif,image/webp
-// @Param filename path string true "委托文件名"
+// @Param filename path string true "委托图片文件名"
 // @Success 200 {file} binary
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
@@ -836,8 +841,7 @@ func (h *EntrustHandler) GetEntrustComments(c *gin.Context) {
 	var req GetEntrustCommentsRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"message": "参数解析失败: " + err.Error(),
+			"error": "参数解析失败: " + err.Error(),
 		})
 		return
 	}
@@ -852,8 +856,7 @@ func (h *EntrustHandler) GetEntrustComments(c *gin.Context) {
 	_, err := h.entrustRepo.GetByID(req.EntrustID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{
-			"success": false,
-			"message": "Entrust not found",
+			"error": "Entrust not found",
 		})
 		return
 	}
@@ -861,8 +864,7 @@ func (h *EntrustHandler) GetEntrustComments(c *gin.Context) {
 	comments, total, err := h.entrustCommentRepo.ListByEntrustID(req.EntrustID, int(req.Page), int(req.PageSize))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"message": "failed to fetch comments",
+			"error": "failed to fetch comments",
 		})
 		return
 	}
@@ -1071,5 +1073,485 @@ func (h *EntrustHandler) UnlikeEntrustComment(c *gin.Context) {
 	c.JSON(http.StatusOK, UnlikeEntrustCommentResponse{
 		Success: true,
 		Message: "取消点赞成功",
+	})
+}
+
+// GetAcceptedEntrustByUserRequest 获取用户委托请求
+type GetAcceptedEntrustByUserRequest struct {
+	UserID   uint64 `json:"user_id"`
+	Page     uint16 `json:"page" form:"page"`
+	PageSize uint16 `json:"page_size" form:"page_size"`
+}
+
+// GetAcceptedEntrustByUserResponse 获取用户委托响应
+type GetAcceptedEntrustByUserResponse = GetEntrustsResponse
+
+// GetAcceptedEntrustByUser 获取指定用户的接收的委托列表
+// @Summary      获取用户接收的委托
+// @Description  分页获取指定用户接收的委托列表
+// @Tags         委托
+// @Accept       json
+// @Produce      json
+// @Param        user_id  path   uint64  true  "用户ID"
+// @Param        page     query  uint16  false  "页码"     default(1)
+// @Param        page_size query uint16  false  "每页数量"  default(20)
+// @Success      200      {object}  GetAcceptedEntrustByUserResponse
+// @Failure      400      {object}  ErrorResponse
+// @Failure      404      {object}  ErrorResponse
+// @Router       /app/user/{user_id}/entrusts/accepted [get]
+func (h *EntrustHandler) GetAcceptedEntrustByUser(c *gin.Context) {
+	var req GetEntrustByUserRequest
+	if userID, err := strconv.ParseUint(c.Param("user_id"), 10, 64); err == nil {
+		req.UserID = userID
+	}
+	if err := c.ShouldBindQuery(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "参数解析失败: " + err.Error(),
+		})
+		return
+	}
+
+	if req.UserID == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "user_id 不能为空",
+		})
+		return
+	}
+
+	if req.Page == 0 {
+		req.Page = 1
+	}
+	if req.PageSize == 0 || req.PageSize > 100 {
+		req.PageSize = 20
+	}
+
+	if _, err := h.userRepo.GetByID(req.UserID); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "用户不存在",
+		})
+		return
+	}
+
+	entrusts, total, err := h.entrustRepo.GetAcceptedEntrusts(req.UserID, int(req.Page), int(req.PageSize))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "查询用户委托失败",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, GetAcceptedEntrustByUserResponse{
+		Success: true,
+		Message: "success",
+		Data:    entrusts,
+		Total:   total,
+		Page:    req.Page,
+	})
+}
+
+type AcceptEntrustRequest struct {
+	EntrustID uint64 `json:"entrust_id"`
+}
+
+type AcceptEntrustResponse struct {
+	Success bool                          `json:"success" example:"true"`
+	Message string                        `json:"message" example:"接受委托成功"`
+	Data    models.CommunityEntrustQRCode `json:"data"`
+}
+
+// AcceptEntrust 接受委托
+// @Summary      接受委托
+// @Description  接受委托,is_progressing就会变成true(进行中),返回生成的二维码数据库内容
+// @Tags         委托
+// @Accept       json
+// @Produce      json
+// @Param        request  body      AcceptEntrustRequest  true  "接受委托请求"
+// @Success      200      {object}  AcceptEntrustResponse
+// @Failure      400      {object}  ErrorResponse
+// @Failure 		 401      {boject}  ErrorResponse
+// @Router       /app/entrust/accept [post]
+func (h *EntrustHandler) AcceptEntrust(c *gin.Context) {
+	var req AcceptEntrustRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		c.Abort()
+		return
+	}
+
+	status, err := h.entrustRepo.CheckEntrustAcceptStatus(req.EntrustID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": fmt.Sprintf("%v", err),
+		})
+		c.Abort()
+		return
+	}
+
+	if status.IsOver {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "委托已结束",
+		})
+		c.Abort()
+		return
+	}
+
+	if status.IsAccepted {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "该委托已被用户受理",
+		})
+		c.Abort()
+		return
+	}
+
+	_userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "user not found"})
+		c.Abort()
+		return
+	}
+
+	UserID := _userID.(uint64)
+
+	if status.UserID == UserID {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "无法接受自己的委托",
+		})
+		c.Abort()
+		return
+	}
+
+	user, err := h.userRepo.GetByID(UserID)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": fmt.Sprintf("%v", err)})
+		c.Abort()
+		return
+	}
+
+	switch status.CreditLevel {
+	case enums.LevelGood:
+		if user.CreditScore < 75 {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "信用等级过低无法接收该委托",
+			})
+			c.Abort()
+			return
+		}
+	case enums.LevelMidium:
+		if user.CreditScore < 50 {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "信用等级过低无法接收该委托",
+			})
+			c.Abort()
+			return
+		}
+	case enums.LevelDanger:
+		if user.CreditScore <= 0 {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "信用等级过低无法接收该委托",
+			})
+			c.Abort()
+			return
+		}
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "未知信用等级",
+		})
+		c.Abort()
+		return
+	}
+
+	success, err := h.entrustRepo.TryAcceptEntrust(req.EntrustID, UserID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err,
+		})
+		c.Abort()
+		return
+	}
+
+	if !success {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "该委托已被用户抢先受理",
+		})
+		c.Abort()
+		return
+	}
+
+	newQRCode, err := h.generateQRCode(req.EntrustID, UserID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": fmt.Errorf("%v", err),
+		})
+		c.Abort()
+		return
+	}
+
+	err = h.entrustQRCodeRepo.Create(newQRCode)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": fmt.Errorf("%v", err),
+		})
+		c.Abort()
+		return
+	}
+
+	c.JSON(http.StatusOK, AcceptEntrustResponse{
+		Success: true,
+		Message: "接受委托成功",
+		Data:    *newQRCode,
+	})
+}
+
+// 私有方法
+func generateEntrustToken(entrustID, acceptorID uint64) string {
+	raw := fmt.Sprintf("%d_%d_%d", entrustID, acceptorID, time.Now().UnixNano())
+	hash := md5.Sum([]byte(raw))
+	return hex.EncodeToString(hash[:])
+}
+
+// 私有方法
+func (h *EntrustHandler) generateQRCode(EntrustID uint64, AcceptorID uint64) (*models.CommunityEntrustQRCode, error) {
+	existing, _ := h.entrustQRCodeRepo.GetByEntrustID(EntrustID)
+	if existing != nil && !existing.IsUsed {
+		return nil, errors.New("已经生成过二维码了,且未被使用")
+	}
+
+	token := generateEntrustToken(EntrustID, AcceptorID)
+	content := fmt.Sprintf("%d %s", EntrustID, token)
+
+	hash := md5.Sum([]byte(content))
+	fileName := fmt.Sprintf("qr_%s.png", hex.EncodeToString(hash[:]))
+	filePath := filepath.Join(h.entrustQRCodeConfig.codeDir, fileName)
+	qrCodeURL := fmt.Sprintf("/files/entrust/qrcode/%s", fileName)
+
+	err := qrcode.WriteFile(content, qrcode.Medium, 256, filePath)
+	if err != nil {
+		return nil, fmt.Errorf("生成二维码图片失败：%w", err)
+	}
+
+	qrCodeRecord := &models.CommunityEntrustQRCode{
+		EntrustID: EntrustID,
+		Token:     token,
+		QRCodeURL: qrCodeURL,
+	}
+
+	return qrCodeRecord, nil
+}
+
+// GetQRCodeInfoRequest
+type GetQRCodeInfoRequest struct {
+	EntrustID uint64 `json:"entrust_id"`
+}
+
+// GetQRCodeInfoResponse
+type GetQRCodeInfoResponse struct {
+	Success bool                          `json:"success" example:"true"`
+	Message string                        `json:"message" example:"获取二维码信息成功"`
+	Data    models.CommunityEntrustQRCode `json:"data"`
+}
+
+// GetQRCodeInfo 获取二维码信息
+// @Summary      获取二维码信息
+// @Description  获取二维码信息
+// @Tags         委托二维码
+// @Accept       json
+// @Produce      json
+// @Param        request  body      GetQRCodeInfoRequest  true  "获取二维码信息请求"
+// @Success      200      {object}  GetQRCodeInfoResponse
+// @Failure      400      {object}  ErrorResponse
+// @Failure 		 401      {boject}  ErrorResponse
+// @Router       /app/entrust/get-qrcode [post]
+func (h *EntrustHandler) GetQRCodeInfo(c *gin.Context) {
+	var req GetQRCodeInfoRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		c.Abort()
+		return
+	}
+
+	status, err := h.entrustRepo.CheckEntrustAcceptStatus(req.EntrustID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": fmt.Sprintf("%v", err),
+		})
+		c.Abort()
+		return
+	}
+
+	if !status.IsAccepted {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "该委托还未被接受,二维码还未生成",
+		})
+		c.Abort()
+		return
+	}
+
+	_userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "user not found"})
+		c.Abort()
+		return
+	}
+
+	UserID := _userID.(uint64)
+
+	if UserID != *status.AcceptorID {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "permission denied",
+		})
+		c.Abort()
+		return
+	}
+
+	QRCode, err := h.entrustQRCodeRepo.GetByEntrustID(req.EntrustID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": fmt.Sprintf("%v", err),
+		})
+		c.Abort()
+		return
+	}
+
+	c.JSON(http.StatusOK, GetQRCodeInfoResponse{
+		Success: true,
+		Message: "获取二维码信息成功",
+		Data:    *QRCode,
+	})
+}
+
+// HandleEntrustQRCode 安全的委托二维码图片访问路由
+// @Summary 委托二维码图片
+// @Description 通过文件名访问委托二维码图片，禁止路径遍历和目录列表
+// @Tags 委托二维码
+// @Produce image/png,image/jpeg,image/gif,image/webp
+// @Param filename path string true "委托二维码图片文件名"
+// @Success 200 {file} binary
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Router /app/files/entrust/qrcode/{filename} [get]
+func (h *EntrustHandler) HandleEntrustQRCode(c *gin.Context) {
+	filename := c.Param("filename")
+	cleanPath, ext, err := utils.ValidateAndResolveImagePath(filename, h.entrustQRCodeConfig.codeDir)
+
+	if err != nil {
+		statusCode := http.StatusInternalServerError
+		errMsg := "server error"
+
+		switch {
+		case errors.Is(err, utils.ErrEmptyFilename), errors.Is(err, utils.ErrUnallowedFilename),
+			errors.Is(err, utils.ErrUnallowedExt), errors.Is(err, utils.ErrUnallowedPath), errors.Is(err, utils.ErrIsDirectory):
+			statusCode = http.StatusBadRequest
+			errMsg = err.Error()
+		case errors.Is(err, utils.ErrFileNotFound):
+			statusCode = http.StatusNotFound
+			errMsg = err.Error()
+		}
+
+		c.JSON(statusCode, gin.H{"error": errMsg})
+		return
+	}
+
+	contentType := utils.GetContentType(ext)
+	c.Header("Content-Type", contentType)
+	c.Header("Content-Disposition", "inline; filename=\""+filename+"\"")
+	c.Header("Cache-Control", "public, max-age=31536000") // 缓存 1 年
+
+	c.File(cleanPath)
+}
+
+type VerifyQRCodeRequest struct {
+	EntrustID uint64 `json:"entrust_id" form:"entrust_id"`
+	Token     string `json:"token" form:"token"`
+}
+
+type VerifyQRCodeResponse struct {
+	Success bool   `json:"success" example:"true"`
+	Message string `json:"message" example:"验证成功"`
+}
+
+// VerifyQRCode 验证
+// @Summary 验证二维码
+// @Description 验证二维码是否有效的接口
+// @Tags 委托二维码
+// @Produce json
+// @Param  entrust_id  query  uint64  false  "委托ID"
+// @Param  token  query  string  false  "验证Token"
+// @Success 200 {object} VerifyQRCodeResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Router /app/entrust/verify [get]
+func (h *EntrustHandler) VerifyQRCode(c *gin.Context) {
+	var req VerifyQRCodeRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "参数解析失败: " + err.Error(),
+		})
+		return
+	}
+
+	entrustQR, err := h.entrustQRCodeRepo.GetByEntrustID(req.EntrustID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "验证错误",
+		})
+		return
+	}
+
+	if req.Token != entrustQR.Token {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "验证错误",
+		})
+		return
+	}
+
+	_userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "验证错误",
+		})
+		c.Abort()
+		return
+	}
+
+	UserID := _userID.(uint64)
+
+	isSuccess, err := h.entrustRepo.CompleteEntrust(req.EntrustID, UserID)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "验证错误",
+		})
+		c.Abort()
+		return
+	}
+
+	if !isSuccess {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "验证错误",
+		})
+		c.Abort()
+		return
+	}
+
+	entrust, err := h.entrustRepo.GetByID(req.EntrustID)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "验证错误",
+		})
+		c.Abort()
+		return
+	}
+
+	err = h.userRepo.AddCreditCoin(UserID, entrust.CreditCoin)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "验证错误",
+		})
+		c.Abort()
+		return
+	}
+
+	c.JSON(http.StatusOK, VerifyQRCodeResponse{
+		Success: true,
+		Message: "验证成功",
 	})
 }

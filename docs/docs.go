@@ -161,6 +161,52 @@ const docTemplate = `{
                 }
             }
         },
+        "/app/entrust/accept": {
+            "post": {
+                "description": "接受委托,is_progressing就会变成true(进行中),返回生成的二维码数据库内容",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "委托"
+                ],
+                "summary": "接受委托",
+                "parameters": [
+                    {
+                        "description": "接受委托请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.AcceptEntrustRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.AcceptEntrustResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "boject"
+                        }
+                    }
+                }
+            }
+        },
         "/app/entrust/comment": {
             "get": {
                 "description": "分页获取指定委托的评论列表，按创建时间倒序",
@@ -474,6 +520,52 @@ const docTemplate = `{
                 }
             }
         },
+        "/app/entrust/get-qrcode": {
+            "post": {
+                "description": "获取二维码信息",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "委托二维码"
+                ],
+                "summary": "获取二维码信息",
+                "parameters": [
+                    {
+                        "description": "获取二维码信息请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.GetQRCodeInfoRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.GetQRCodeInfoResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "boject"
+                        }
+                    }
+                }
+            }
+        },
         "/app/entrust/like": {
             "post": {
                 "description": "点赞委托,需要登陆",
@@ -677,6 +769,53 @@ const docTemplate = `{
                 }
             }
         },
+        "/app/entrust/verify": {
+            "get": {
+                "description": "验证二维码是否有效的接口",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "委托二维码"
+                ],
+                "summary": "验证二维码",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "format": "int64",
+                        "description": "委托ID",
+                        "name": "entrust_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "验证Token",
+                        "name": "token",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.VerifyQRCodeResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/app/entrust/{entrust_id}": {
             "get": {
                 "description": "给ID拿委托",
@@ -766,6 +905,50 @@ const docTemplate = `{
                 }
             }
         },
+        "/app/files/entrust/qrcode/{filename}": {
+            "get": {
+                "description": "通过文件名访问委托二维码图片，禁止路径遍历和目录列表",
+                "produces": [
+                    "image/png",
+                    "image/jpeg",
+                    "image/gif",
+                    "image/webp"
+                ],
+                "tags": [
+                    "委托二维码"
+                ],
+                "summary": "委托二维码图片",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "委托二维码图片文件名",
+                        "name": "filename",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/app/files/entrust/{filename}": {
             "get": {
                 "description": "通过文件名访问委托图片，禁止路径遍历和目录列表",
@@ -782,7 +965,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "委托文件名",
+                        "description": "委托图片文件名",
                         "name": "filename",
                         "in": "path",
                         "required": true
@@ -826,7 +1009,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "帖子文件名",
+                        "description": "帖子图片文件名",
                         "name": "filename",
                         "in": "path",
                         "required": true
@@ -1787,6 +1970,67 @@ const docTemplate = `{
                 }
             }
         },
+        "/app/user/{user_id}/entrusts/accepted": {
+            "get": {
+                "description": "分页获取指定用户接收的委托列表",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "委托"
+                ],
+                "summary": "获取用户接收的委托",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "format": "int64",
+                        "description": "用户ID",
+                        "name": "user_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "format": "int32",
+                        "default": 1,
+                        "description": "页码",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "format": "int32",
+                        "default": 20,
+                        "description": "每页数量",
+                        "name": "page_size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.GetAcceptedEntrustByUserResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/app/user/{user_id}/posts": {
             "get": {
                 "description": "分页获取指定用户发布的帖子列表",
@@ -1872,6 +2116,30 @@ const docTemplate = `{
                 "LevelMidium",
                 "LevelGood"
             ]
+        },
+        "handlers.AcceptEntrustRequest": {
+            "type": "object",
+            "properties": {
+                "entrust_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "handlers.AcceptEntrustResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/models.CommunityEntrustQRCode"
+                },
+                "message": {
+                    "type": "string",
+                    "example": "接受委托成功"
+                },
+                "success": {
+                    "type": "boolean",
+                    "example": true
+                }
+            }
         },
         "handlers.AddEntrustImageRequest": {
             "type": "object",
@@ -2136,6 +2404,29 @@ const docTemplate = `{
                 }
             }
         },
+        "handlers.GetAcceptedEntrustByUserResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.CommunityEntrust"
+                    }
+                },
+                "message": {
+                    "type": "string"
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "success": {
+                    "type": "boolean"
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
         "handlers.GetEntrustByIDResponse": {
             "type": "object",
             "properties": {
@@ -2343,6 +2634,30 @@ const docTemplate = `{
                 }
             }
         },
+        "handlers.GetQRCodeInfoRequest": {
+            "type": "object",
+            "properties": {
+                "entrust_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "handlers.GetQRCodeInfoResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/models.CommunityEntrustQRCode"
+                },
+                "message": {
+                    "type": "string",
+                    "example": "获取二维码信息成功"
+                },
+                "success": {
+                    "type": "boolean",
+                    "example": true
+                }
+            }
+        },
         "handlers.LikeEntrustCommentRequest": {
             "type": "object",
             "required": [
@@ -2489,6 +2804,14 @@ const docTemplate = `{
                 }
             }
         },
+        "handlers.NewEntrustData": {
+            "type": "object",
+            "properties": {
+                "entrust_id": {
+                    "type": "integer"
+                }
+            }
+        },
         "handlers.NewEntrustRequest": {
             "type": "object",
             "properties": {
@@ -2509,11 +2832,22 @@ const docTemplate = `{
         "handlers.NewEntrustResponse": {
             "type": "object",
             "properties": {
+                "data": {
+                    "$ref": "#/definitions/handlers.NewEntrustData"
+                },
                 "message": {
                     "type": "string"
                 },
                 "success": {
                     "type": "boolean"
+                }
+            }
+        },
+        "handlers.NewPostData": {
+            "type": "object",
+            "properties": {
+                "post_id": {
+                    "type": "integer"
                 }
             }
         },
@@ -2531,6 +2865,9 @@ const docTemplate = `{
         "handlers.NewPostResponse": {
             "type": "object",
             "properties": {
+                "data": {
+                    "$ref": "#/definitions/handlers.NewPostData"
+                },
                 "message": {
                     "type": "string"
                 },
@@ -2784,9 +3121,25 @@ const docTemplate = `{
                 }
             }
         },
+        "handlers.VerifyQRCodeResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "example": "验证成功"
+                },
+                "success": {
+                    "type": "boolean",
+                    "example": true
+                }
+            }
+        },
         "models.CommunityEntrust": {
             "type": "object",
             "properties": {
+                "acceptor_id": {
+                    "type": "integer"
+                },
                 "allowed_credit_score_level": {
                     "$ref": "#/definitions/enums.CreditScoreLevel"
                 },
@@ -2845,13 +3198,22 @@ const docTemplate = `{
         "models.CommunityEntrustQRCode": {
             "type": "object",
             "properties": {
+                "create_time": {
+                    "type": "string"
+                },
                 "entrust_id": {
                     "type": "integer"
                 },
                 "id": {
                     "type": "integer"
                 },
+                "is_used": {
+                    "type": "boolean"
+                },
                 "qr_code_url": {
+                    "type": "string"
+                },
+                "token": {
                     "type": "string"
                 }
             }
@@ -2956,7 +3318,7 @@ const docTemplate = `{
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "1.2.8",
+	Version:          "1.3.1",
 	Host:             "localhost:8080",
 	BasePath:         "/app",
 	Schemes:          []string{"http", "https"},

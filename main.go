@@ -21,7 +21,7 @@ import (
 )
 
 // @title           sp_backend API
-// @version         1.2.8
+// @version         1.3.1
 // @description     社区平台 API 文档，包含用户、帖子、委托等功能
 // @termsOfService  http://swagger.io/terms/
 
@@ -135,11 +135,12 @@ func main() {
 
 	userRouter := protectedRouter.Group("/user")
 	{
-		userRouter.GET("/get-info", userHandler.GetInfo)                      // @Tags 用户
-		userRouter.POST("/edit", userHandler.Edit)                            // @Tags 用户
-		userRouter.POST("/edit-other", userHandler.EditOther)                 // @Tags 用户
-		userRouter.GET("/:user_id/posts", postHandler.GetPostByUser)          // @Tags 帖子
-		userRouter.GET("/:user_id/entrusts", entrustHandler.GetEntrustByUser) // @Tags 委托
+		userRouter.GET("/get-info", userHandler.GetInfo)                                       // @Tags 用户
+		userRouter.POST("/edit", userHandler.Edit)                                             // @Tags 用户
+		userRouter.POST("/edit-other", userHandler.EditOther)                                  // @Tags 用户
+		userRouter.GET("/:user_id/posts", postHandler.GetPostByUser)                           // @Tags 帖子
+		userRouter.GET("/:user_id/entrusts", entrustHandler.GetEntrustByUser)                  // @Tags 委托
+		userRouter.GET("/:user_id/entrusts/accepted", entrustHandler.GetAcceptedEntrustByUser) // @Tags 委托
 	}
 
 	postRouter := protectedRouter.Group("/post")
@@ -170,6 +171,9 @@ func main() {
 		entrustRouter.POST("/unlike", entrustHandler.UnlikeEntrust)                // @Tags 委托
 		entrustRouter.POST("/comment/like", entrustHandler.LikeEntrustComment)     // @Tags 委托
 		entrustRouter.POST("/comment/unlike", entrustHandler.UnlikeEntrustComment) // @Tags 委托
+		entrustRouter.POST("/accept", entrustHandler.AcceptEntrust)                // @Tags 委托
+		entrustRouter.POST("/get-qrcode", entrustHandler.GetQRCodeInfo)            // @Tags 委托二维码
+		entrustRouter.POST("/verify", entrustHandler.VerifyQRCode)                 // @Tags 委托二维码
 	}
 
 	uploadRouter := protectedRouter.Group("/uploads")
@@ -182,9 +186,10 @@ func main() {
 
 	fileRouter := appRouter.Group("/files")
 	{
-		fileRouter.GET("/avatar/:filename", avatarHandler.AvatarsHandler)       // @Tags 头像
-		fileRouter.GET("/post/:filename", postHandler.HandlePostImage)          // @Tags 帖子
-		fileRouter.GET("/entrust/:filename", entrustHandler.HandleEntrustImage) // @Tags 委托
+		fileRouter.GET("/avatar/:filename", avatarHandler.AvatarsHandler)               // @Tags 头像
+		fileRouter.GET("/post/:filename", postHandler.HandlePostImage)                  // @Tags 帖子
+		fileRouter.GET("/entrust/:filename", entrustHandler.HandleEntrustImage)         // @Tags 委托
+		fileRouter.GET("/entrust/qrcode/:filename", entrustHandler.HandleEntrustQRCode) // @Tags 委托二维码
 	}
 
 	server.Run(":8080")

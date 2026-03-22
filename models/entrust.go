@@ -11,10 +11,11 @@ import (
 type CommunityEntrust struct {
 	ID                      uint64                 `gorm:"primaryKey;autoIncrement" json:"id"`
 	UserID                  uint64                 `gorm:"not null;index" json:"user_id"`
+	AcceptorID              *uint64                `gorm:"index" json:"acceptor_id"`
 	Title                   string                 `gorm:"type:varchar(255);not null" json:"title"`
 	Content                 string                 `gorm:"type:text" json:"content"`
 	AllowedCreditScoreLevel enums.CreditScoreLevel `gorm:"type:int;not null" json:"allowed_credit_score_level"`
-	CreditCoin              int                    `gorm:"not null" json:"credit_coin"`
+	CreditCoin              int                    `gorm:"not null;" json:"credit_coin"`
 	CreateTime              time.Time              `gorm:"not null;autoCreateTime" json:"create_time"`
 	IsProgressing           bool                   `gorm:"not null;default:false" json:"is_progressing"`
 	IsOver                  bool                   `gorm:"not null;default:false" json:"is_over"`
@@ -22,7 +23,7 @@ type CommunityEntrust struct {
 
 	Images   []CommunityEntrustImage `gorm:"foreignKey:EntrustID" json:"images,omitempty"`
 	Comments []EntrustComment        `gorm:"foreignKey:EntrustID;constraint:OnDelete:CASCADE" json:"comments,omitempty" swaggerignore:"true"`
-	QRCode   *CommunityEntrustQRCode `gorm:"foreignKey:EntrustID;constraint:OnDelete:CASCADE" json:"qr_code,omitempty"`
+	QRCode   *CommunityEntrustQRCode `gorm:"foreignKey:EntrustID;" json:"qr_code,omitempty"`
 }
 
 func (CommunityEntrust) TableName() string {

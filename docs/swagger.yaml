@@ -18,6 +18,22 @@ definitions:
     - LevelDanger
     - LevelMidium
     - LevelGood
+  handlers.AcceptEntrustRequest:
+    properties:
+      entrust_id:
+        type: integer
+    type: object
+  handlers.AcceptEntrustResponse:
+    properties:
+      data:
+        $ref: '#/definitions/models.CommunityEntrustQRCode'
+      message:
+        example: 接受委托成功
+        type: string
+      success:
+        example: true
+        type: boolean
+    type: object
   handlers.AddEntrustImageRequest:
     properties:
       entrust_id:
@@ -204,6 +220,21 @@ definitions:
         example: invalid request
         type: string
     type: object
+  handlers.GetAcceptedEntrustByUserResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/models.CommunityEntrust'
+        type: array
+      message:
+        type: string
+      page:
+        type: integer
+      success:
+        type: boolean
+      total:
+        type: integer
+    type: object
   handlers.GetEntrustByIDResponse:
     properties:
       data:
@@ -339,6 +370,22 @@ definitions:
       total:
         type: integer
     type: object
+  handlers.GetQRCodeInfoRequest:
+    properties:
+      entrust_id:
+        type: integer
+    type: object
+  handlers.GetQRCodeInfoResponse:
+    properties:
+      data:
+        $ref: '#/definitions/models.CommunityEntrustQRCode'
+      message:
+        example: 获取二维码信息成功
+        type: string
+      success:
+        example: true
+        type: boolean
+    type: object
   handlers.LikeEntrustCommentRequest:
     properties:
       comment_id:
@@ -438,6 +485,11 @@ definitions:
       refresh_token:
         type: string
     type: object
+  handlers.NewEntrustData:
+    properties:
+      entrust_id:
+        type: integer
+    type: object
   handlers.NewEntrustRequest:
     properties:
       allowed_credit_score_level:
@@ -451,10 +503,17 @@ definitions:
     type: object
   handlers.NewEntrustResponse:
     properties:
+      data:
+        $ref: '#/definitions/handlers.NewEntrustData'
       message:
         type: string
       success:
         type: boolean
+    type: object
+  handlers.NewPostData:
+    properties:
+      post_id:
+        type: integer
     type: object
   handlers.NewPostRequest:
     properties:
@@ -465,6 +524,8 @@ definitions:
     type: object
   handlers.NewPostResponse:
     properties:
+      data:
+        $ref: '#/definitions/handlers.NewPostData'
       message:
         type: string
       success:
@@ -647,8 +708,19 @@ definitions:
         example: true
         type: boolean
     type: object
+  handlers.VerifyQRCodeResponse:
+    properties:
+      message:
+        example: 验证成功
+        type: string
+      success:
+        example: true
+        type: boolean
+    type: object
   models.CommunityEntrust:
     properties:
+      acceptor_id:
+        type: integer
       allowed_credit_score_level:
         $ref: '#/definitions/enums.CreditScoreLevel'
       content:
@@ -687,11 +759,17 @@ definitions:
     type: object
   models.CommunityEntrustQRCode:
     properties:
+      create_time:
+        type: string
       entrust_id:
         type: integer
       id:
         type: integer
+      is_used:
+        type: boolean
       qr_code_url:
+        type: string
+      token:
         type: string
     type: object
   models.CommunityPost:
@@ -762,7 +840,7 @@ info:
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: http://swagger.io/terms/
   title: sp_backend API
-  version: 1.2.8
+  version: 1.3.1
 paths:
   /app/auth/login:
     post:
@@ -882,6 +960,36 @@ paths:
           schema:
             $ref: '#/definitions/handlers.ErrorResponse'
       summary: 获取委托
+      tags:
+      - 委托
+  /app/entrust/accept:
+    post:
+      consumes:
+      - application/json
+      description: 接受委托,is_progressing就会变成true(进行中),返回生成的二维码数据库内容
+      parameters:
+      - description: 接受委托请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.AcceptEntrustRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.AcceptEntrustResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            type: boject
+      summary: 接受委托
       tags:
       - 委托
   /app/entrust/comment:
@@ -1091,6 +1199,36 @@ paths:
       summary: 删委托
       tags:
       - 委托
+  /app/entrust/get-qrcode:
+    post:
+      consumes:
+      - application/json
+      description: 获取二维码信息
+      parameters:
+      - description: 获取二维码信息请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.GetQRCodeInfoRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.GetQRCodeInfoResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            type: boject
+      summary: 获取二维码信息
+      tags:
+      - 委托二维码
   /app/entrust/like:
     post:
       consumes:
@@ -1225,6 +1363,37 @@ paths:
       summary: 取消点赞委托
       tags:
       - 委托
+  /app/entrust/verify:
+    get:
+      description: 验证二维码是否有效的接口
+      parameters:
+      - description: 委托ID
+        format: int64
+        in: query
+        name: entrust_id
+        type: integer
+      - description: 验证Token
+        in: query
+        name: token
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.VerifyQRCodeResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 验证二维码
+      tags:
+      - 委托二维码
   /app/files/avatar/{filename}:
     get:
       description: 通过文件名访问头像图片，禁止路径遍历和目录列表
@@ -1259,7 +1428,7 @@ paths:
     get:
       description: 通过文件名访问委托图片，禁止路径遍历和目录列表
       parameters:
-      - description: 委托文件名
+      - description: 委托图片文件名
         in: path
         name: filename
         required: true
@@ -1285,11 +1454,41 @@ paths:
       summary: 获取委托图片
       tags:
       - 委托
+  /app/files/entrust/qrcode/{filename}:
+    get:
+      description: 通过文件名访问委托二维码图片，禁止路径遍历和目录列表
+      parameters:
+      - description: 委托二维码图片文件名
+        in: path
+        name: filename
+        required: true
+        type: string
+      produces:
+      - image/png
+      - image/jpeg
+      - image/gif
+      - image/webp
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 委托二维码图片
+      tags:
+      - 委托二维码
   /app/files/post/{filename}:
     get:
       description: 通过文件名访问帖子图片，禁止路径遍历和目录列表
       parameters:
-      - description: 帖子文件名
+      - description: 帖子图片文件名
         in: path
         name: filename
         required: true
@@ -1846,6 +2045,48 @@ paths:
           schema:
             $ref: '#/definitions/handlers.ErrorResponse'
       summary: 获取用户委托
+      tags:
+      - 委托
+  /app/user/{user_id}/entrusts/accepted:
+    get:
+      consumes:
+      - application/json
+      description: 分页获取指定用户接收的委托列表
+      parameters:
+      - description: 用户ID
+        format: int64
+        in: path
+        name: user_id
+        required: true
+        type: integer
+      - default: 1
+        description: 页码
+        format: int32
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: 每页数量
+        format: int32
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.GetAcceptedEntrustByUserResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 获取用户接收的委托
       tags:
       - 委托
   /app/user/{user_id}/posts:

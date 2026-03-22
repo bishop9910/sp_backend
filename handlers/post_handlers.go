@@ -68,10 +68,15 @@ type NewPostRequest struct {
 	Content string `json:"content"`
 }
 
+type NewPostData struct {
+	PostID uint64 `json:"post_id"`
+}
+
 // NewPostResponse NewPost响应
 type NewPostResponse struct {
-	Success bool   `json:"success"`
-	Message string `json:"message"`
+	Success bool        `json:"success"`
+	Message string      `json:"message"`
+	Data    NewPostData `json:"data"`
 }
 
 // NewPost 发帖
@@ -133,6 +138,9 @@ func (h *PostHandler) NewPost(c *gin.Context) {
 	c.JSON(http.StatusCreated, NewPostResponse{
 		Success: true,
 		Message: "create post successfully",
+		Data: NewPostData{
+			PostID: newPost.ID,
+		},
 	})
 
 }
@@ -290,8 +298,7 @@ func (h *PostHandler) GetPosts(c *gin.Context) {
 	var req GetPostsRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"message": "参数解析失败: " + err.Error(),
+			"error": "参数解析失败: " + err.Error(),
 		})
 		return
 	}
@@ -306,8 +313,7 @@ func (h *PostHandler) GetPosts(c *gin.Context) {
 	posts, total, err := h.postRepo.ListPostsWithPreload(int(req.Page), int(req.PageSize))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"message": "查询帖子列表失败",
+			"error": "查询帖子列表失败",
 		})
 		return
 	}
@@ -351,16 +357,14 @@ func (h *PostHandler) GetPostByUser(c *gin.Context) {
 	}
 	if err := c.ShouldBindQuery(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"message": "参数解析失败: " + err.Error(),
+			"error": "参数解析失败: " + err.Error(),
 		})
 		return
 	}
 
 	if req.UserID == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"message": "user_id 不能为空",
+			"error": "user_id 不能为空",
 		})
 		return
 	}
@@ -374,8 +378,7 @@ func (h *PostHandler) GetPostByUser(c *gin.Context) {
 
 	if _, err := h.userRepo.GetByID(req.UserID); err != nil {
 		c.JSON(http.StatusNotFound, gin.H{
-			"success": false,
-			"message": "用户不存在",
+			"error": "用户不存在",
 		})
 		return
 	}
@@ -383,8 +386,7 @@ func (h *PostHandler) GetPostByUser(c *gin.Context) {
 	posts, total, err := h.postRepo.ListByUserWithPreload(req.UserID, int(req.Page), int(req.PageSize))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"message": "查询用户帖子失败",
+			"error": "查询用户帖子失败",
 		})
 		return
 	}
@@ -424,8 +426,7 @@ func (h *PostHandler) GetPostByID(c *gin.Context) {
 	post, err := h.postRepo.GetByID(PostID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"message": "查询帖子失败",
+			"error": "查询帖子失败",
 		})
 		return
 	}
@@ -670,7 +671,7 @@ func (h *PostHandler) UnlikePost(c *gin.Context) {
 // @Description 通过文件名访问帖子图片，禁止路径遍历和目录列表
 // @Tags 帖子
 // @Produce image/png,image/jpeg,image/gif,image/webp
-// @Param filename path string true "帖子文件名"
+// @Param filename path string true "帖子图片文件名"
 // @Success 200 {file} binary
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
@@ -809,8 +810,7 @@ func (h *PostHandler) GetPostComments(c *gin.Context) {
 	var req GetPostCommentsRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"message": "参数解析失败: " + err.Error(),
+			"error": "参数解析失败: " + err.Error(),
 		})
 		return
 	}
@@ -825,8 +825,7 @@ func (h *PostHandler) GetPostComments(c *gin.Context) {
 	_, err := h.postRepo.GetByID(req.PostID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{
-			"success": false,
-			"message": "post not found",
+			"error": "post not found",
 		})
 		return
 	}
@@ -834,8 +833,7 @@ func (h *PostHandler) GetPostComments(c *gin.Context) {
 	comments, total, err := h.postCommentRepo.ListByPostID(req.PostID, int(req.Page), int(req.PageSize))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"message": "failed to fetch comments",
+			"error": "failed to fetch comments",
 		})
 		return
 	}

@@ -24,6 +24,12 @@ func (r *EntrustQRCodeRepository) GetByID(id uint64) (*models.CommunityEntrustQR
 	return &qrcode_img, err
 }
 
+func (r *EntrustQRCodeRepository) GetByEntrustID(entrustID uint64) (*models.CommunityEntrustQRCode, error) {
+	var qrcode_img models.CommunityEntrustQRCode
+	err := r.db.Where("entrust_id = ?", entrustID).First(&qrcode_img).Error
+	return &qrcode_img, err
+}
+
 func (r *EntrustQRCodeRepository) Delete(id uint64) error {
 	return r.db.Delete(&models.CommunityEntrustQRCode{}, id).Error
 }
