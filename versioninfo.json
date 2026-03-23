@@ -4,13 +4,13 @@
             "Major": 1,
             "Minor": 0,
             "Patch": 1,
-            "Build": 5
+            "Build": 6
         },
         "ProductVersion": {
             "Major": 1,
             "Minor": 0,
             "Patch": 1,
-            "Build": 5
+            "Build": 6
         },
         "FileFlagsMask": "3f",
         "FileFlags ": "00",
@@ -22,14 +22,14 @@
         "Comments": "sp_backend",
         "CompanyName": "bishop9910",
         "FileDescription": "school platform backend",
-        "FileVersion": "v1.0.1.5",
+        "FileVersion": "v1.0.1.6",
         "InternalName": "sp_backend",
         "LegalCopyright": "Copyright (c) 2026 bishop9910",
         "LegalTrademarks": "",
         "OriginalFilename": "sp_backend",
         "PrivateBuild": "",
         "ProductName": "sp_backend",
-        "ProductVersion": "v1.0.1.5",
+        "ProductVersion": "v1.0.1.6",
         "SpecialBuild": ""
     },
     "VarFileInfo": {

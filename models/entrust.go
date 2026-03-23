@@ -23,7 +23,7 @@ type CommunityEntrust struct {
 
 	Images   []CommunityEntrustImage `gorm:"foreignKey:EntrustID" json:"images,omitempty"`
 	Comments []EntrustComment        `gorm:"foreignKey:EntrustID;constraint:OnDelete:CASCADE" json:"comments,omitempty" swaggerignore:"true"`
-	QRCode   *CommunityEntrustQRCode `gorm:"foreignKey:EntrustID;" json:"qr_code,omitempty"`
+	QRCode   *CommunityEntrustQRCode `gorm:"foreignKey:EntrustID;" json:"qr_code,omitempty" swaggerignore:"true"`
 }
 
 func (CommunityEntrust) TableName() string {

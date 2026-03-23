@@ -82,6 +82,8 @@ definitions:
     properties:
       avatar:
         type: string
+      id:
+        type: integer
       nick_name:
         type: string
     type: object
@@ -782,8 +784,6 @@ definitions:
         type: boolean
       like_count:
         type: integer
-      qr_code:
-        $ref: '#/definitions/models.CommunityEntrustQRCode'
       title:
         type: string
       user_id:
@@ -881,7 +881,7 @@ info:
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: http://swagger.io/terms/
   title: sp_backend API
-  version: 1.3.3
+  version: 1.3.4
 paths:
   /app/auth/login:
     post:

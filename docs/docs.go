@@ -2199,6 +2199,9 @@ const docTemplate = `{
                 "avatar": {
                     "type": "string"
                 },
+                "id": {
+                    "type": "integer"
+                },
                 "nick_name": {
                     "type": "string"
                 }
@@ -3234,9 +3237,6 @@ const docTemplate = `{
                 "like_count": {
                     "type": "integer"
                 },
-                "qr_code": {
-                    "$ref": "#/definitions/models.CommunityEntrustQRCode"
-                },
                 "title": {
                     "type": "string"
                 },
@@ -3382,7 +3382,7 @@ const docTemplate = `{
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "1.3.3",
+	Version:          "1.3.4",
 	Host:             "localhost:8080",
 	BasePath:         "/app",
 	Schemes:          []string{"http", "https"},

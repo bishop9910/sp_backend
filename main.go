@@ -21,7 +21,7 @@ import (
 )
 
 // @title           sp_backend API
-// @version         1.3.3
+// @version         1.3.4
 // @description     社区平台 API 文档，包含用户、帖子、委托等功能
 // @termsOfService  http://swagger.io/terms/
 

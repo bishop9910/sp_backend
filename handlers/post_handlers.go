@@ -275,6 +275,7 @@ type GetPostsRequest struct {
 }
 
 type AuthorBase struct {
+	ID       uint64 `json:"id"`
 	NickName string `json:"nick_name"`
 	Avatar   string `json:"avatar"`
 }
@@ -341,6 +342,7 @@ func (h *PostHandler) GetPosts(c *gin.Context) {
 		posts_with_author = append(posts_with_author, PostWithAuthor{
 			Post: posts[i],
 			Author: AuthorBase{
+				ID:       author.ID,
 				NickName: author.NickName,
 				Avatar:   author.Avatar,
 			},
@@ -433,6 +435,7 @@ func (h *PostHandler) GetPostByUser(c *gin.Context) {
 		posts_with_author = append(posts_with_author, PostWithAuthor{
 			Post: posts[i],
 			Author: AuthorBase{
+				ID:       author.ID,
 				NickName: author.NickName,
 				Avatar:   author.Avatar,
 			},
@@ -493,6 +496,7 @@ func (h *PostHandler) GetPostByID(c *gin.Context) {
 		Data: PostWithAuthor{
 			Post: *post,
 			Author: AuthorBase{
+				ID:       author.ID,
 				NickName: author.NickName,
 				Avatar:   author.Avatar,
 			},
@@ -919,6 +923,7 @@ func (h *PostHandler) GetPostComments(c *gin.Context) {
 		comments_with_author = append(comments_with_author, PostCommentWithAuthor{
 			Comment: comments[i],
 			Author: AuthorBase{
+				ID:       author.ID,
 				NickName: author.NickName,
 				Avatar:   author.Avatar,
 			},

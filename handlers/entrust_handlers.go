@@ -354,6 +354,7 @@ func (h *EntrustHandler) GetEntrusts(c *gin.Context) {
 		entrusts_with_author = append(entrusts_with_author, EntrustWithAuthor{
 			Entrust: entrusts[i],
 			Author: AuthorBase{
+				ID:       author.ID,
 				NickName: author.NickName,
 				Avatar:   author.Avatar,
 			},
@@ -446,6 +447,7 @@ func (h *EntrustHandler) GetEntrustByUser(c *gin.Context) {
 		entrusts_with_author = append(entrusts_with_author, EntrustWithAuthor{
 			Entrust: entrusts[i],
 			Author: AuthorBase{
+				ID:       author.ID,
 				NickName: author.NickName,
 				Avatar:   author.Avatar,
 			},
@@ -506,6 +508,7 @@ func (h *EntrustHandler) GetEntrustByID(c *gin.Context) {
 		Data: EntrustWithAuthor{
 			Entrust: *entrust,
 			Author: AuthorBase{
+				ID:       author.ID,
 				NickName: author.NickName,
 				Avatar:   author.Avatar,
 			},
@@ -945,6 +948,7 @@ func (h *EntrustHandler) GetEntrustComments(c *gin.Context) {
 		comments_with_author = append(comments_with_author, EntrustCommentWithAuthor{
 			Comment: comments[i],
 			Author: AuthorBase{
+				ID:       author.ID,
 				NickName: author.NickName,
 				Avatar:   author.Avatar,
 			},
@@ -1234,6 +1238,7 @@ func (h *EntrustHandler) GetAcceptedEntrustByUser(c *gin.Context) {
 		entrusts_with_author = append(entrusts_with_author, EntrustWithAuthor{
 			Entrust: entrusts[i],
 			Author: AuthorBase{
+				ID:       author.ID,
 				NickName: author.NickName,
 				Avatar:   author.Avatar,
 			},
