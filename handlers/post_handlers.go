@@ -274,13 +274,23 @@ type GetPostsRequest struct {
 	PageSize uint16 `json:"page_size" form:"page_size"` // 每页数量，默认20
 }
 
+type AuthorBase struct {
+	NickName string `json:"nick_name"`
+	Avatar   string `json:"avatar"`
+}
+
+type PostWithAuthor struct {
+	Post   models.CommunityPost `json:"post"`
+	Author AuthorBase           `json:"author"`
+}
+
 // GetPostsResponse 获取帖子列表响应
 type GetPostsResponse struct {
-	Success bool                   `json:"success"`
-	Message string                 `json:"message"`
-	Data    []models.CommunityPost `json:"data"`
-	Total   int64                  `json:"total"`
-	Page    uint16                 `json:"page"`
+	Success bool             `json:"success"`
+	Message string           `json:"message"`
+	Data    []PostWithAuthor `json:"data"`
+	Total   int64            `json:"total"`
+	Page    uint16           `json:"page"`
 }
 
 // GetPosts 获取帖子列表（分页 + 预加载图片）
@@ -318,10 +328,29 @@ func (h *PostHandler) GetPosts(c *gin.Context) {
 		return
 	}
 
+	var posts_with_author []PostWithAuthor
+
+	for i := range posts {
+		author, err := h.userRepo.GetByID(posts[i].UserID)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": err,
+			})
+			return
+		}
+		posts_with_author = append(posts_with_author, PostWithAuthor{
+			Post: posts[i],
+			Author: AuthorBase{
+				NickName: author.NickName,
+				Avatar:   author.Avatar,
+			},
+		})
+	}
+
 	c.JSON(http.StatusOK, GetPostsResponse{
 		Success: true,
 		Message: "success",
-		Data:    posts,
+		Data:    posts_with_author,
 		Total:   total,
 		Page:    req.Page,
 	})
@@ -391,19 +420,38 @@ func (h *PostHandler) GetPostByUser(c *gin.Context) {
 		return
 	}
 
+	var posts_with_author []PostWithAuthor
+
+	for i := range posts {
+		author, err := h.userRepo.GetByID(posts[i].UserID)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": err,
+			})
+			return
+		}
+		posts_with_author = append(posts_with_author, PostWithAuthor{
+			Post: posts[i],
+			Author: AuthorBase{
+				NickName: author.NickName,
+				Avatar:   author.Avatar,
+			},
+		})
+	}
+
 	c.JSON(http.StatusOK, GetPostByUserResponse{
 		Success: true,
 		Message: "success",
-		Data:    posts,
+		Data:    posts_with_author,
 		Total:   total,
 		Page:    req.Page,
 	})
 }
 
 type GetPostByIDResponse struct {
-	Success bool                 `json:"success"`
-	Message string               `json:"message"`
-	Data    models.CommunityPost `json:"data"`
+	Success bool           `json:"success"`
+	Message string         `json:"message"`
+	Data    PostWithAuthor `json:"data"`
 }
 
 // GetPostByID 获取指定ID的帖子
@@ -431,10 +479,24 @@ func (h *PostHandler) GetPostByID(c *gin.Context) {
 		return
 	}
 
+	author, err := h.userRepo.GetByID(post.UserID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err,
+		})
+		return
+	}
+
 	c.JSON(http.StatusOK, GetPostByIDResponse{
 		Success: true,
 		Message: "ok",
-		Data:    *post,
+		Data: PostWithAuthor{
+			Post: *post,
+			Author: AuthorBase{
+				NickName: author.NickName,
+				Avatar:   author.Avatar,
+			},
+		},
 	})
 
 }
@@ -784,13 +846,18 @@ type GetPostCommentsRequest struct {
 	PageSize uint16 `json:"page_size" form:"page_size"`                // 每页数量，默认20
 }
 
+type PostCommentWithAuthor struct {
+	Comment models.PostComment `json:"comment"`
+	Author  AuthorBase         `json:"author"`
+}
+
 // GetPostCommentsResponse 获取评论列表响应
 type GetPostCommentsResponse struct {
-	Success bool                 `json:"success"`
-	Message string               `json:"message"`
-	Data    []models.PostComment `json:"data"`
-	Total   int64                `json:"total"`
-	Page    uint16               `json:"page"`
+	Success bool                    `json:"success"`
+	Message string                  `json:"message"`
+	Data    []PostCommentWithAuthor `json:"data"`
+	Total   int64                   `json:"total"`
+	Page    uint16                  `json:"page"`
 }
 
 // GetPostComments 获取帖子评论列表
@@ -838,10 +905,30 @@ func (h *PostHandler) GetPostComments(c *gin.Context) {
 		return
 	}
 
+	var comments_with_author []PostCommentWithAuthor
+
+	for i := range comments {
+		author, err := h.userRepo.GetByID(comments[i].UserID)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": err,
+			})
+			return
+		}
+
+		comments_with_author = append(comments_with_author, PostCommentWithAuthor{
+			Comment: comments[i],
+			Author: AuthorBase{
+				NickName: author.NickName,
+				Avatar:   author.Avatar,
+			},
+		})
+	}
+
 	c.JSON(http.StatusOK, GetPostCommentsResponse{
 		Success: true,
 		Message: "success",
-		Data:    comments,
+		Data:    comments_with_author,
 		Total:   total,
 		Page:    req.Page,
 	})

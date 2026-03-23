@@ -16,7 +16,7 @@
             "name": "Apache 2.0",
             "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
         },
-        "version": "1.3.1"
+        "version": "1.3.3"
     },
     "host": "localhost:8080",
     "basePath": "/app",
@@ -1950,7 +1950,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/handlers.GetEntrustByUserRequest"
+                            "$ref": "#/definitions/handlers.GetEntrustByUserResponse"
                         }
                     },
                     "400": {
@@ -2191,6 +2191,17 @@
                 }
             }
         },
+        "handlers.AuthorBase": {
+            "type": "object",
+            "properties": {
+                "avatar": {
+                    "type": "string"
+                },
+                "nick_name": {
+                    "type": "string"
+                }
+            }
+        },
         "handlers.AvatarData": {
             "type": "object",
             "properties": {
@@ -2393,6 +2404,28 @@
                 }
             }
         },
+        "handlers.EntrustCommentWithAuthor": {
+            "type": "object",
+            "properties": {
+                "author": {
+                    "$ref": "#/definitions/handlers.AuthorBase"
+                },
+                "comment": {
+                    "$ref": "#/definitions/models.EntrustComment"
+                }
+            }
+        },
+        "handlers.EntrustWithAuthor": {
+            "type": "object",
+            "properties": {
+                "author": {
+                    "$ref": "#/definitions/handlers.AuthorBase"
+                },
+                "entrust": {
+                    "$ref": "#/definitions/models.CommunityEntrust"
+                }
+            }
+        },
         "handlers.ErrorResponse": {
             "type": "object",
             "properties": {
@@ -2408,7 +2441,7 @@
                 "data": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.CommunityEntrust"
+                        "$ref": "#/definitions/handlers.EntrustWithAuthor"
                     }
                 },
                 "message": {
@@ -2429,7 +2462,7 @@
             "type": "object",
             "properties": {
                 "data": {
-                    "$ref": "#/definitions/models.CommunityEntrust"
+                    "$ref": "#/definitions/handlers.EntrustWithAuthor"
                 },
                 "message": {
                     "type": "string"
@@ -2439,16 +2472,25 @@
                 }
             }
         },
-        "handlers.GetEntrustByUserRequest": {
+        "handlers.GetEntrustByUserResponse": {
             "type": "object",
             "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/handlers.EntrustWithAuthor"
+                    }
+                },
+                "message": {
+                    "type": "string"
+                },
                 "page": {
                     "type": "integer"
                 },
-                "page_size": {
-                    "type": "integer"
+                "success": {
+                    "type": "boolean"
                 },
-                "user_id": {
+                "total": {
                     "type": "integer"
                 }
             }
@@ -2459,7 +2501,7 @@
                 "data": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.EntrustComment"
+                        "$ref": "#/definitions/handlers.EntrustCommentWithAuthor"
                     }
                 },
                 "message": {
@@ -2482,7 +2524,7 @@
                 "data": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.CommunityEntrust"
+                        "$ref": "#/definitions/handlers.EntrustWithAuthor"
                     }
                 },
                 "message": {
@@ -2553,7 +2595,7 @@
             "type": "object",
             "properties": {
                 "data": {
-                    "$ref": "#/definitions/models.CommunityPost"
+                    "$ref": "#/definitions/handlers.PostWithAuthor"
                 },
                 "message": {
                     "type": "string"
@@ -2569,7 +2611,7 @@
                 "data": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.CommunityPost"
+                        "$ref": "#/definitions/handlers.PostWithAuthor"
                     }
                 },
                 "message": {
@@ -2592,7 +2634,7 @@
                 "data": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.PostComment"
+                        "$ref": "#/definitions/handlers.PostCommentWithAuthor"
                     }
                 },
                 "message": {
@@ -2615,7 +2657,7 @@
                 "data": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.CommunityPost"
+                        "$ref": "#/definitions/handlers.PostWithAuthor"
                     }
                 },
                 "message": {
@@ -2871,6 +2913,28 @@
                 },
                 "success": {
                     "type": "boolean"
+                }
+            }
+        },
+        "handlers.PostCommentWithAuthor": {
+            "type": "object",
+            "properties": {
+                "author": {
+                    "$ref": "#/definitions/handlers.AuthorBase"
+                },
+                "comment": {
+                    "$ref": "#/definitions/models.PostComment"
+                }
+            }
+        },
+        "handlers.PostWithAuthor": {
+            "type": "object",
+            "properties": {
+                "author": {
+                    "$ref": "#/definitions/handlers.AuthorBase"
+                },
+                "post": {
+                    "$ref": "#/definitions/models.CommunityPost"
                 }
             }
         },

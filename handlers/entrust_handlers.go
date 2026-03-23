@@ -292,13 +292,18 @@ type GetEntrustsRequest struct {
 	PageSize uint16 `json:"page_size" form:"page_size"` // 每页数量，默认20
 }
 
+type EntrustWithAuthor struct {
+	Entrust models.CommunityEntrust `json:"entrust"`
+	Author  AuthorBase              `json:"author"`
+}
+
 // GetEntrustsResponse 获取委托列表响应
 type GetEntrustsResponse struct {
-	Success bool                      `json:"success"`
-	Message string                    `json:"message"`
-	Data    []models.CommunityEntrust `json:"data"`
-	Total   int64                     `json:"total"`
-	Page    uint16                    `json:"page"`
+	Success bool                `json:"success"`
+	Message string              `json:"message"`
+	Data    []EntrustWithAuthor `json:"data"`
+	Total   int64               `json:"total"`
+	Page    uint16              `json:"page"`
 }
 
 // GetEntrusts 获取委托列表（分页 + 预加载图片）
@@ -328,7 +333,7 @@ func (h *EntrustHandler) GetEntrusts(c *gin.Context) {
 		req.PageSize = 20 // 限制最大100，防止恶意拉取
 	}
 
-	posts, total, err := h.entrustRepo.ListEntrustsWithPreload(int(req.Page), int(req.PageSize))
+	entrusts, total, err := h.entrustRepo.ListEntrustsWithPreload(int(req.Page), int(req.PageSize))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "查询帖子列表失败",
@@ -336,10 +341,29 @@ func (h *EntrustHandler) GetEntrusts(c *gin.Context) {
 		return
 	}
 
+	var entrusts_with_author []EntrustWithAuthor
+
+	for i := range entrusts {
+		author, err := h.userRepo.GetByID(entrusts[i].UserID)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": err,
+			})
+			return
+		}
+		entrusts_with_author = append(entrusts_with_author, EntrustWithAuthor{
+			Entrust: entrusts[i],
+			Author: AuthorBase{
+				NickName: author.NickName,
+				Avatar:   author.Avatar,
+			},
+		})
+	}
+
 	c.JSON(http.StatusOK, GetEntrustsResponse{
 		Success: true,
 		Message: "success",
-		Data:    posts,
+		Data:    entrusts_with_author,
 		Total:   total,
 		Page:    req.Page,
 	})
@@ -364,7 +388,7 @@ type GetEntrustByUserResponse = GetEntrustsResponse
 // @Param        user_id  path   uint64  true  "用户ID"
 // @Param        page     query  uint16  false  "页码"     default(1)
 // @Param        page_size query uint16  false  "每页数量"  default(20)
-// @Success      200      {object}  GetEntrustByUserRequest
+// @Success      200      {object}  GetEntrustByUserResponse
 // @Failure      400      {object}  ErrorResponse
 // @Failure      404      {object}  ErrorResponse
 // @Router       /app/user/{user_id}/entrusts [get]
@@ -409,19 +433,38 @@ func (h *EntrustHandler) GetEntrustByUser(c *gin.Context) {
 		return
 	}
 
+	var entrusts_with_author []EntrustWithAuthor
+
+	for i := range entrusts {
+		author, err := h.userRepo.GetByID(entrusts[i].UserID)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": err,
+			})
+			return
+		}
+		entrusts_with_author = append(entrusts_with_author, EntrustWithAuthor{
+			Entrust: entrusts[i],
+			Author: AuthorBase{
+				NickName: author.NickName,
+				Avatar:   author.Avatar,
+			},
+		})
+	}
+
 	c.JSON(http.StatusOK, GetEntrustByUserResponse{
 		Success: true,
 		Message: "success",
-		Data:    entrusts,
+		Data:    entrusts_with_author,
 		Total:   total,
 		Page:    req.Page,
 	})
 }
 
 type GetEntrustByIDResponse struct {
-	Success bool                    `json:"success"`
-	Message string                  `json:"message"`
-	Data    models.CommunityEntrust `json:"data"`
+	Success bool              `json:"success"`
+	Message string            `json:"message"`
+	Data    EntrustWithAuthor `json:"data"`
 }
 
 // GetEntrustByID 获取指定ID的委托
@@ -449,10 +492,24 @@ func (h *EntrustHandler) GetEntrustByID(c *gin.Context) {
 		return
 	}
 
+	author, err := h.userRepo.GetByID(entrust.UserID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err,
+		})
+		return
+	}
+
 	c.JSON(http.StatusOK, GetEntrustByIDResponse{
 		Success: true,
 		Message: "ok",
-		Data:    *entrust,
+		Data: EntrustWithAuthor{
+			Entrust: *entrust,
+			Author: AuthorBase{
+				NickName: author.NickName,
+				Avatar:   author.Avatar,
+			},
+		},
 	})
 
 }
@@ -815,13 +872,18 @@ type GetEntrustCommentsRequest struct {
 	PageSize  uint16 `json:"page_size" form:"page_size"`                      // 每页数量，默认20
 }
 
+type EntrustCommentWithAuthor struct {
+	Comment models.EntrustComment `json:"comment"`
+	Author  AuthorBase            `json:"author"`
+}
+
 // GetEntrustCommentsResponse 获取评论列表响应
 type GetEntrustCommentsResponse struct {
-	Success bool                    `json:"success"`
-	Message string                  `json:"message"`
-	Data    []models.EntrustComment `json:"data"`
-	Total   int64                   `json:"total"`
-	Page    uint16                  `json:"page"`
+	Success bool                       `json:"success"`
+	Message string                     `json:"message"`
+	Data    []EntrustCommentWithAuthor `json:"data"`
+	Total   int64                      `json:"total"`
+	Page    uint16                     `json:"page"`
 }
 
 // GetEntrustComments 获取委托评论列表
@@ -869,10 +931,30 @@ func (h *EntrustHandler) GetEntrustComments(c *gin.Context) {
 		return
 	}
 
+	var comments_with_author []EntrustCommentWithAuthor
+
+	for i := range comments {
+		author, err := h.userRepo.GetByID(comments[i].UserID)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": err,
+			})
+			return
+		}
+
+		comments_with_author = append(comments_with_author, EntrustCommentWithAuthor{
+			Comment: comments[i],
+			Author: AuthorBase{
+				NickName: author.NickName,
+				Avatar:   author.Avatar,
+			},
+		})
+	}
+
 	c.JSON(http.StatusOK, GetEntrustCommentsResponse{
 		Success: true,
 		Message: "success",
-		Data:    comments,
+		Data:    comments_with_author,
 		Total:   total,
 		Page:    req.Page,
 	})
@@ -1140,10 +1222,28 @@ func (h *EntrustHandler) GetAcceptedEntrustByUser(c *gin.Context) {
 		return
 	}
 
+	var entrusts_with_author []EntrustWithAuthor
+
+	for i := range entrusts {
+		author, err := h.userRepo.GetByID(entrusts[i].UserID)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": err,
+			})
+		}
+		entrusts_with_author = append(entrusts_with_author, EntrustWithAuthor{
+			Entrust: entrusts[i],
+			Author: AuthorBase{
+				NickName: author.NickName,
+				Avatar:   author.Avatar,
+			},
+		})
+	}
+
 	c.JSON(http.StatusOK, GetAcceptedEntrustByUserResponse{
 		Success: true,
 		Message: "success",
-		Data:    entrusts,
+		Data:    entrusts_with_author,
 		Total:   total,
 		Page:    req.Page,
 	})

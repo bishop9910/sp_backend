@@ -1952,7 +1952,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/handlers.GetEntrustByUserRequest"
+                            "$ref": "#/definitions/handlers.GetEntrustByUserResponse"
                         }
                     },
                     "400": {
@@ -2193,6 +2193,17 @@ const docTemplate = `{
                 }
             }
         },
+        "handlers.AuthorBase": {
+            "type": "object",
+            "properties": {
+                "avatar": {
+                    "type": "string"
+                },
+                "nick_name": {
+                    "type": "string"
+                }
+            }
+        },
         "handlers.AvatarData": {
             "type": "object",
             "properties": {
@@ -2395,6 +2406,28 @@ const docTemplate = `{
                 }
             }
         },
+        "handlers.EntrustCommentWithAuthor": {
+            "type": "object",
+            "properties": {
+                "author": {
+                    "$ref": "#/definitions/handlers.AuthorBase"
+                },
+                "comment": {
+                    "$ref": "#/definitions/models.EntrustComment"
+                }
+            }
+        },
+        "handlers.EntrustWithAuthor": {
+            "type": "object",
+            "properties": {
+                "author": {
+                    "$ref": "#/definitions/handlers.AuthorBase"
+                },
+                "entrust": {
+                    "$ref": "#/definitions/models.CommunityEntrust"
+                }
+            }
+        },
         "handlers.ErrorResponse": {
             "type": "object",
             "properties": {
@@ -2410,7 +2443,7 @@ const docTemplate = `{
                 "data": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.CommunityEntrust"
+                        "$ref": "#/definitions/handlers.EntrustWithAuthor"
                     }
                 },
                 "message": {
@@ -2431,7 +2464,7 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "data": {
-                    "$ref": "#/definitions/models.CommunityEntrust"
+                    "$ref": "#/definitions/handlers.EntrustWithAuthor"
                 },
                 "message": {
                     "type": "string"
@@ -2441,16 +2474,25 @@ const docTemplate = `{
                 }
             }
         },
-        "handlers.GetEntrustByUserRequest": {
+        "handlers.GetEntrustByUserResponse": {
             "type": "object",
             "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/handlers.EntrustWithAuthor"
+                    }
+                },
+                "message": {
+                    "type": "string"
+                },
                 "page": {
                     "type": "integer"
                 },
-                "page_size": {
-                    "type": "integer"
+                "success": {
+                    "type": "boolean"
                 },
-                "user_id": {
+                "total": {
                     "type": "integer"
                 }
             }
@@ -2461,7 +2503,7 @@ const docTemplate = `{
                 "data": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.EntrustComment"
+                        "$ref": "#/definitions/handlers.EntrustCommentWithAuthor"
                     }
                 },
                 "message": {
@@ -2484,7 +2526,7 @@ const docTemplate = `{
                 "data": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.CommunityEntrust"
+                        "$ref": "#/definitions/handlers.EntrustWithAuthor"
                     }
                 },
                 "message": {
@@ -2555,7 +2597,7 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "data": {
-                    "$ref": "#/definitions/models.CommunityPost"
+                    "$ref": "#/definitions/handlers.PostWithAuthor"
                 },
                 "message": {
                     "type": "string"
@@ -2571,7 +2613,7 @@ const docTemplate = `{
                 "data": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.CommunityPost"
+                        "$ref": "#/definitions/handlers.PostWithAuthor"
                     }
                 },
                 "message": {
@@ -2594,7 +2636,7 @@ const docTemplate = `{
                 "data": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.PostComment"
+                        "$ref": "#/definitions/handlers.PostCommentWithAuthor"
                     }
                 },
                 "message": {
@@ -2617,7 +2659,7 @@ const docTemplate = `{
                 "data": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.CommunityPost"
+                        "$ref": "#/definitions/handlers.PostWithAuthor"
                     }
                 },
                 "message": {
@@ -2873,6 +2915,28 @@ const docTemplate = `{
                 },
                 "success": {
                     "type": "boolean"
+                }
+            }
+        },
+        "handlers.PostCommentWithAuthor": {
+            "type": "object",
+            "properties": {
+                "author": {
+                    "$ref": "#/definitions/handlers.AuthorBase"
+                },
+                "comment": {
+                    "$ref": "#/definitions/models.PostComment"
+                }
+            }
+        },
+        "handlers.PostWithAuthor": {
+            "type": "object",
+            "properties": {
+                "author": {
+                    "$ref": "#/definitions/handlers.AuthorBase"
+                },
+                "post": {
+                    "$ref": "#/definitions/models.CommunityPost"
                 }
             }
         },
@@ -3318,7 +3382,7 @@ const docTemplate = `{
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "1.3.1",
+	Version:          "1.3.3",
 	Host:             "localhost:8080",
 	BasePath:         "/app",
 	Schemes:          []string{"http", "https"},
