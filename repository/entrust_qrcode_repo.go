@@ -36,5 +36,5 @@ func (r *EntrustQRCodeRepository) Delete(id uint64) error {
 
 // DeleteByEntrustID 删除某委托的QRCode
 func (r *EntrustQRCodeRepository) DeleteByEntrustID(entrustID uint64) error {
-	return r.db.Where("entrust_id = ?", entrustID).Delete(&models.CommunityEntrustImage{}).Error
+	return r.db.Where("entrust_id = ?", entrustID).Delete(&models.CommunityEntrustQRCode{}).Error
 }

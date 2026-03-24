@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -18,7 +19,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/skip2/go-qrcode"
 )
 
 type EntrustHandler struct {
@@ -59,6 +59,7 @@ func NewEntrustHandler(config *EntrustHandlerConfig) *EntrustHandler {
 		entrustRepo:        config.EntrustRepo,
 		entrustImageRepo:   config.EntrustImageRepo,
 		entrustCommentRepo: config.EntrustCommentRepo,
+		entrustQRCodeRepo:  config.EntrustQRCodeRepo,
 		jwtConfig:          config.JwtConfig,
 		likeRepo:           config.LikeRepo,
 		entrustImageConfig: &EntrustImageConfig{
@@ -489,7 +490,7 @@ func (h *EntrustHandler) GetEntrustByID(c *gin.Context) {
 	entrust, err := h.entrustRepo.GetByID(EntrustID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "查询帖子失败",
+			"error": "查询委托失败",
 		})
 		return
 	}
@@ -1283,10 +1284,28 @@ func (h *EntrustHandler) AcceptEntrust(c *gin.Context) {
 		return
 	}
 
+	_userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "user not found"})
+		c.Abort()
+		return
+	}
+
+	UserID := _userID.(uint64)
+
+	newQRCode, err := h.generateQRCodeWithoutCheck(req.EntrustID, UserID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		c.Abort()
+		return
+	}
+
 	status, err := h.entrustRepo.CheckEntrustAcceptStatus(req.EntrustID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": fmt.Sprintf("%v", err),
+			"error": err.Error(),
 		})
 		c.Abort()
 		return
@@ -1307,15 +1326,6 @@ func (h *EntrustHandler) AcceptEntrust(c *gin.Context) {
 		c.Abort()
 		return
 	}
-
-	_userID, exists := c.Get("user_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "user not found"})
-		c.Abort()
-		return
-	}
-
-	UserID := _userID.(uint64)
 
 	if status.UserID == UserID {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -1368,7 +1378,7 @@ func (h *EntrustHandler) AcceptEntrust(c *gin.Context) {
 	success, err := h.entrustRepo.TryAcceptEntrust(req.EntrustID, UserID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err,
+			"error": err.Error(),
 		})
 		c.Abort()
 		return
@@ -1382,19 +1392,10 @@ func (h *EntrustHandler) AcceptEntrust(c *gin.Context) {
 		return
 	}
 
-	newQRCode, err := h.generateQRCode(req.EntrustID, UserID)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": fmt.Errorf("%v", err),
-		})
-		c.Abort()
-		return
-	}
-
 	err = h.entrustQRCodeRepo.Create(newQRCode)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": fmt.Errorf("%v", err),
+			"error": err.Error(),
 		})
 		c.Abort()
 		return
@@ -1415,29 +1416,14 @@ func generateEntrustToken(entrustID, acceptorID uint64) string {
 }
 
 // 私有方法
-func (h *EntrustHandler) generateQRCode(EntrustID uint64, AcceptorID uint64) (*models.CommunityEntrustQRCode, error) {
-	existing, _ := h.entrustQRCodeRepo.GetByEntrustID(EntrustID)
-	if existing != nil && !existing.IsUsed {
-		return nil, errors.New("已经生成过二维码了,且未被使用")
-	}
+func (h *EntrustHandler) generateQRCodeWithoutCheck(EntrustID uint64, AcceptorID uint64) (*models.CommunityEntrustQRCode, error) {
 
 	token := generateEntrustToken(EntrustID, AcceptorID)
-	content := fmt.Sprintf("%d %s", EntrustID, token)
-
-	hash := md5.Sum([]byte(content))
-	fileName := fmt.Sprintf("qr_%s.png", hex.EncodeToString(hash[:]))
-	filePath := filepath.Join(h.entrustQRCodeConfig.codeDir, fileName)
-	qrCodeURL := fmt.Sprintf("/files/entrust/qrcode/%s", fileName)
-
-	err := qrcode.WriteFile(content, qrcode.Medium, 256, filePath)
-	if err != nil {
-		return nil, fmt.Errorf("生成二维码图片失败：%w", err)
-	}
 
 	qrCodeRecord := &models.CommunityEntrustQRCode{
 		EntrustID: EntrustID,
 		Token:     token,
-		QRCodeURL: qrCodeURL,
+		QRCodeURL: "not use",
 	}
 
 	return qrCodeRecord, nil
@@ -1524,49 +1510,10 @@ func (h *EntrustHandler) GetQRCodeInfo(c *gin.Context) {
 	})
 }
 
-// HandleEntrustQRCode 安全的委托二维码图片访问路由
-// @Summary 委托二维码图片
-// @Description 通过文件名访问委托二维码图片，禁止路径遍历和目录列表
-// @Tags 委托二维码
-// @Produce image/png,image/jpeg,image/gif,image/webp
-// @Param filename path string true "委托二维码图片文件名"
-// @Success 200 {file} binary
-// @Failure 400 {object} ErrorResponse
-// @Failure 404 {object} ErrorResponse
-// @Router /app/files/entrust/qrcode/{filename} [get]
-func (h *EntrustHandler) HandleEntrustQRCode(c *gin.Context) {
-	filename := c.Param("filename")
-	cleanPath, ext, err := utils.ValidateAndResolveImagePath(filename, h.entrustQRCodeConfig.codeDir)
-
-	if err != nil {
-		statusCode := http.StatusInternalServerError
-		errMsg := "server error"
-
-		switch {
-		case errors.Is(err, utils.ErrEmptyFilename), errors.Is(err, utils.ErrUnallowedFilename),
-			errors.Is(err, utils.ErrUnallowedExt), errors.Is(err, utils.ErrUnallowedPath), errors.Is(err, utils.ErrIsDirectory):
-			statusCode = http.StatusBadRequest
-			errMsg = err.Error()
-		case errors.Is(err, utils.ErrFileNotFound):
-			statusCode = http.StatusNotFound
-			errMsg = err.Error()
-		}
-
-		c.JSON(statusCode, gin.H{"error": errMsg})
-		return
-	}
-
-	contentType := utils.GetContentType(ext)
-	c.Header("Content-Type", contentType)
-	c.Header("Content-Disposition", "inline; filename=\""+filename+"\"")
-	c.Header("Cache-Control", "public, max-age=31536000") // 缓存 1 年
-
-	c.File(cleanPath)
-}
-
 type VerifyQRCodeRequest struct {
-	EntrustID uint64 `json:"entrust_id" form:"entrust_id"`
-	Token     string `json:"token" form:"token"`
+	EntrustID  uint64 `json:"entrust_id" form:"entrust_id" binding:"required"`
+	AcceptorID uint64 `json:"acceptor_id" form:"acceptor_id" binding:"required"`
+	Token      string `json:"token" form:"token" binding:"required"`
 }
 
 type VerifyQRCodeResponse struct {
@@ -1580,6 +1527,7 @@ type VerifyQRCodeResponse struct {
 // @Tags 委托二维码
 // @Produce json
 // @Param  entrust_id  query  uint64  false  "委托ID"
+// @Param  acceptor_id  query  uint64  false  "接收人ID"
 // @Param  token  query  string  false  "验证Token"
 // @Success 200 {object} VerifyQRCodeResponse
 // @Failure 400 {object} ErrorResponse
@@ -1609,21 +1557,10 @@ func (h *EntrustHandler) VerifyQRCode(c *gin.Context) {
 		return
 	}
 
-	_userID, exists := c.Get("user_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "验证错误",
-		})
-		c.Abort()
-		return
-	}
-
-	UserID := _userID.(uint64)
-
-	isSuccess, err := h.entrustRepo.CompleteEntrust(req.EntrustID, UserID)
+	isSuccess, err := h.entrustRepo.CompleteEntrust(req.EntrustID, req.AcceptorID)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "验证错误",
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
 		})
 		c.Abort()
 		return
@@ -1646,7 +1583,7 @@ func (h *EntrustHandler) VerifyQRCode(c *gin.Context) {
 		return
 	}
 
-	err = h.userRepo.AddCreditCoin(UserID, entrust.CreditCoin)
+	err = h.userRepo.AddCreditCoin(req.AcceptorID, entrust.CreditCoin)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"error": "验证错误",
@@ -1658,5 +1595,131 @@ func (h *EntrustHandler) VerifyQRCode(c *gin.Context) {
 	c.JSON(http.StatusOK, VerifyQRCodeResponse{
 		Success: true,
 		Message: "验证成功",
+	})
+}
+
+type LikeStatusData struct {
+	IsLiked bool `json:"is_liked" example:"true"`
+}
+
+type CheckLikeStatusResponse struct {
+	Success bool           `json:"success" example:"true"`
+	Message string         `json:"message,omitempty" example:"查询成功"`
+	Data    LikeStatusData `json:"data,omitempty"`
+}
+
+// ============ 委托点赞状态查询 ============
+type CheckEntrustLikeRequest struct {
+	EntrustID uint64 `json:"entrust_id" form:"entrust_id" binding:"required,min=1"`
+}
+
+// ============ 评论点赞状态查询 ============
+type CheckEntrustCommentLikeRequest struct {
+	CommentID uint64 `json:"comment_id" form:"comment_id" binding:"required,min=1"`
+}
+
+// CheckEntrustLikeStatus 查询委托点赞状态
+// @Summary 查询委托点赞状态
+// @Description 检查当前用户是否已点赞指定委托
+// @Tags 委托
+// @Produce json
+// @Param entrust_id query uint64 true "委托ID"
+// @Success 200 {object} CheckLikeStatusResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 401 {object} ErrorResponse
+// @Router /app/entrust/like/status [get]
+func (h *EntrustHandler) CheckEntrustLikeStatus(c *gin.Context) {
+	var req CheckEntrustLikeRequest
+
+	// 1. 参数绑定 + 验证
+	if err := c.ShouldBindQuery(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "参数错误: " + err.Error(),
+		})
+		return
+	}
+
+	// 2. 获取当前用户（必须登录）
+	_userID, exists := c.Get("user_id")
+	if !exists || _userID == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "请先登录",
+		})
+		return
+	}
+	userID := _userID.(uint64)
+
+	// 3. 调用 Repository 查询点赞状态
+	target := &models.CommunityEntrust{ID: req.EntrustID}
+	isLiked, err := h.likeRepo.IsLiked(userID, target)
+
+	if err != nil {
+		log.Printf("[CheckEntrustLikeStatus] query error: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "查询失败",
+		})
+		return
+	}
+
+	// 4. 返回结果
+	c.JSON(http.StatusOK, CheckLikeStatusResponse{
+		Success: true,
+		Message: "查询成功",
+		Data: LikeStatusData{
+			IsLiked: isLiked,
+		},
+	})
+}
+
+// CheckEntrustCommentLikeStatus 查询委托评论点赞状态
+// @Summary 查询委托评论点赞状态
+// @Description 检查当前用户是否已点赞指定委托评论
+// @Tags 委托
+// @Produce json
+// @Param comment_id query uint64 true "评论ID"
+// @Success 200 {object} CheckLikeStatusResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 401 {object} ErrorResponse
+// @Router /app/entrust/comment/like/status [get]
+func (h *EntrustHandler) CheckEntrustCommentLikeStatus(c *gin.Context) {
+	var req CheckEntrustCommentLikeRequest
+
+	// 1. 参数绑定 + 验证
+	if err := c.ShouldBindQuery(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "参数错误: " + err.Error(),
+		})
+		return
+	}
+
+	// 2. 获取当前用户（必须登录）
+	_userID, exists := c.Get("user_id")
+	if !exists || _userID == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "请先登录",
+		})
+		return
+	}
+	userID := _userID.(uint64)
+
+	// 3. 调用 Repository 查询点赞状态
+	target := &models.EntrustComment{ID: req.CommentID}
+	isLiked, err := h.likeRepo.IsLiked(userID, target)
+
+	if err != nil {
+		log.Printf("[CheckEntrustCommentLikeStatus] query error: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "查询失败",
+		})
+		return
+	}
+
+	// 4. 返回结果
+	c.JSON(http.StatusOK, CheckLikeStatusResponse{
+		Success: true,
+		Message: "查询成功",
+		Data: LikeStatusData{
+			IsLiked: isLiked,
+		},
 	})
 }

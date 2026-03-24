@@ -149,7 +149,6 @@ func (r *EntrustRepository) TryAcceptEntrust(entrustID, userID uint64) (bool, er
 		Updates(map[string]interface{}{
 			"acceptor_id":    userID,
 			"is_progressing": true,
-			"updated_at":     gorm.Expr("NOW()"),
 		})
 
 	if result.Error != nil {
@@ -193,31 +192,27 @@ func (r *EntrustRepository) GetAcceptedEntrusts(userID uint64, page, pageSize in
 	return entrusts, total, nil
 }
 
-func (r *EntrustRepository) CompleteEntrust(entrustID, userID uint64) (bool, error) {
+func (r *EntrustRepository) CompleteEntrust(entrustID, acceptorID uint64) (bool, error) {
+	// 先查询委托的实际状态
+	var entrust models.CommunityEntrust
+	if err := r.db.First(&entrust, entrustID).Error; err != nil {
+		return false, fmt.Errorf("委托不存在: %w", err)
+	}
+
+	// 执行更新
 	result := r.db.
 		Model(&models.CommunityEntrust{}).
-		// 核心条件：
-		// 1. ID 匹配
-		// 2. 必须是当前的受理人 (acceptor_id = userID)
-		// 3. 必须处于进行中状态 (is_progressing = true)
-		// 4. 必须未结束 (is_over = false)
 		Where("id = ? AND acceptor_id = ? AND is_progressing = ? AND is_over = ?",
-			entrustID, userID, true, false).
+			entrustID, acceptorID, true, false).
 		Updates(map[string]interface{}{
-			"is_progressing": false, // 停止进行中
-			"is_over":        true,  // 标记为已结束
-			"updated_at":     gorm.Expr("NOW()"),
+			"is_progressing": false,
+			"is_over":        true,
 		})
 
 	if result.Error != nil {
 		return false, fmt.Errorf("完成委托失败：%w", result.Error)
 	}
 
-	// 如果影响行数为 0，说明条件不满足
-	// 可能原因：
-	// 1. 委托已结束
-	// 2. 操作者不是受理人
-	// 3. 委托不在进行中状态
 	if result.RowsAffected == 0 {
 		return false, fmt.Errorf("无法完成委托：委托可能已结束、未开始或非本人受理")
 	}

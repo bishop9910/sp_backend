@@ -30,6 +30,7 @@ type GetInfoResponse struct {
 }
 
 type GetInfoResponseData struct {
+	ID          uint64 `json:"id"`
 	Username    string `json:"username"`
 	Email       string `json:"email"`
 	Avatar      string `json:"avatar"`
@@ -81,6 +82,7 @@ func (h *UserHandler) GetInfo(c *gin.Context) {
 	}
 
 	data := GetInfoResponseData{
+		ID:          user.ID,
 		Username:    user.Username,
 		Email:       user.Email,
 		NickName:    user.NickName,

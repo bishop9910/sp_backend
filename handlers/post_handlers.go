@@ -3,6 +3,7 @@ package handlers
 import (
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -1134,5 +1135,120 @@ func (h *PostHandler) UnlikePostComment(c *gin.Context) {
 	c.JSON(http.StatusOK, UnlikePostCommentResponse{
 		Success: true,
 		Message: "取消点赞成功",
+	})
+}
+
+// CheckPostLikeRequest 帖子点赞状态查询请求
+type CheckPostLikeRequest struct {
+	PostID uint64 `json:"post_id" form:"post_id" binding:"required,min=1"`
+}
+
+// CheckPostCommentLikeRequest 帖子评论点赞状态查询请求
+type CheckPostCommentLikeRequest struct {
+	CommentID uint64 `json:"comment_id" form:"comment_id" binding:"required,min=1"`
+}
+
+// CheckPostLikeStatus 查询帖子点赞状态
+// @Summary 查询帖子点赞状态
+// @Description 检查当前用户是否已点赞指定帖子
+// @Tags 帖子
+// @Produce json
+// @Param post_id query uint64 true "帖子ID"
+// @Success 200 {object} CheckLikeStatusResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 401 {object} ErrorResponse
+// @Router /app/post/like/status [get]
+func (h *PostHandler) CheckPostLikeStatus(c *gin.Context) {
+	var req CheckPostLikeRequest
+
+	if err := c.ShouldBindQuery(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "参数错误: " + err.Error(),
+		})
+		return
+	}
+
+	// 2. 获取当前用户（必须登录）
+	_userID, exists := c.Get("user_id")
+	if !exists || _userID == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "请先登录",
+		})
+		return
+	}
+	userID := _userID.(uint64)
+
+	// 3. 调用 Repository 查询点赞状态
+	target := &models.CommunityPost{ID: req.PostID}
+	isLiked, err := h.likeRepo.IsLiked(userID, target)
+
+	if err != nil {
+		log.Printf("[CheckPostLikeStatus] query error: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "查询失败",
+		})
+		return
+	}
+
+	// 4. 返回结果
+	c.JSON(http.StatusOK, CheckLikeStatusResponse{
+		Success: true,
+		Message: "查询成功",
+		Data: LikeStatusData{
+			IsLiked: isLiked,
+		},
+	})
+}
+
+// CheckPostCommentLikeStatus 查询帖子评论点赞状态
+// @Summary 查询帖子评论点赞状态
+// @Description 检查当前用户是否已点赞指定帖子评论
+// @Tags 帖子
+// @Produce json
+// @Param comment_id query uint64 true "评论ID"
+// @Success 200 {object} CheckLikeStatusResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 401 {object} ErrorResponse
+// @Router /app/post/comment/like/status [get]
+func (h *PostHandler) CheckPostCommentLikeStatus(c *gin.Context) {
+	var req CheckPostCommentLikeRequest
+
+	// 1. 参数绑定 + 验证
+	if err := c.ShouldBindQuery(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "参数错误: " + err.Error(),
+		})
+		return
+	}
+
+	// 2. 获取当前用户（必须登录）
+	_userID, exists := c.Get("user_id")
+	if !exists || _userID == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "请先登录",
+		})
+		return
+	}
+	userID := _userID.(uint64)
+
+	// 3. 调用 Repository 查询点赞状态
+	target := &models.PostComment{ID: req.CommentID}
+	isLiked, err := h.likeRepo.IsLiked(userID, target)
+
+	if err != nil {
+		log.Printf("[CheckPostCommentLikeStatus] query error: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "查询失败",
+		})
+		return
+	}
+
+	// 4. 返回结果
+	c.JSON(http.StatusOK, CheckLikeStatusResponse{
+		Success: true,
+		Message: "查询成功",
+		Data: LikeStatusData{
+			IsLiked: isLiked,
+		},
 	})
 }

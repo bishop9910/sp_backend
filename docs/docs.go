@@ -416,6 +416,48 @@ const docTemplate = `{
                 }
             }
         },
+        "/app/entrust/comment/like/status": {
+            "get": {
+                "description": "检查当前用户是否已点赞指定委托评论",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "委托"
+                ],
+                "summary": "查询委托评论点赞状态",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "format": "int64",
+                        "description": "评论ID",
+                        "name": "comment_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.CheckLikeStatusResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/app/entrust/comment/unlike": {
             "post": {
                 "description": "取消对评论的点赞,需要登陆",
@@ -618,6 +660,48 @@ const docTemplate = `{
                 }
             }
         },
+        "/app/entrust/like/status": {
+            "get": {
+                "description": "检查当前用户是否已点赞指定委托",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "委托"
+                ],
+                "summary": "查询委托点赞状态",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "format": "int64",
+                        "description": "委托ID",
+                        "name": "entrust_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.CheckLikeStatusResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/app/entrust/list": {
             "get": {
                 "description": "分页获取社区委托列表，默认按创建时间倒序",
@@ -788,6 +872,13 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
+                        "type": "integer",
+                        "format": "int64",
+                        "description": "接收人ID",
+                        "name": "acceptor_id",
+                        "in": "query"
+                    },
+                    {
                         "type": "string",
                         "description": "验证Token",
                         "name": "token",
@@ -878,50 +969,6 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "头像文件名",
-                        "name": "filename",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "file"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/app/files/entrust/qrcode/{filename}": {
-            "get": {
-                "description": "通过文件名访问委托二维码图片，禁止路径遍历和目录列表",
-                "produces": [
-                    "image/png",
-                    "image/jpeg",
-                    "image/gif",
-                    "image/webp"
-                ],
-                "tags": [
-                    "委托二维码"
-                ],
-                "summary": "委托二维码图片",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "委托二维码图片文件名",
                         "name": "filename",
                         "in": "path",
                         "required": true
@@ -1246,6 +1293,48 @@ const docTemplate = `{
                 }
             }
         },
+        "/app/post/comment/like/status": {
+            "get": {
+                "description": "检查当前用户是否已点赞指定帖子评论",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "帖子"
+                ],
+                "summary": "查询帖子评论点赞状态",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "format": "int64",
+                        "description": "评论ID",
+                        "name": "comment_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.CheckLikeStatusResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/app/post/comment/unlike": {
             "post": {
                 "description": "取消对评论的点赞,需要登陆",
@@ -1395,6 +1484,48 @@ const docTemplate = `{
                     },
                     "403": {
                         "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/app/post/like/status": {
+            "get": {
+                "description": "检查当前用户是否已点赞指定帖子",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "帖子"
+                ],
+                "summary": "查询帖子点赞状态",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "format": "int64",
+                        "description": "帖子ID",
+                        "name": "post_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.CheckLikeStatusResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/handlers.ErrorResponse"
                         }
@@ -2216,6 +2347,22 @@ const docTemplate = `{
                 }
             }
         },
+        "handlers.CheckLikeStatusResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/handlers.LikeStatusData"
+                },
+                "message": {
+                    "type": "string",
+                    "example": "查询成功"
+                },
+                "success": {
+                    "type": "boolean",
+                    "example": true
+                }
+            }
+        },
         "handlers.CreateEntrustCommentRequest": {
             "type": "object",
             "required": [
@@ -2582,6 +2729,9 @@ const docTemplate = `{
                 "gender": {
                     "type": "string"
                 },
+                "id": {
+                    "type": "integer"
+                },
                 "nickname": {
                     "type": "string"
                 },
@@ -2798,6 +2948,15 @@ const docTemplate = `{
                     "example": "删除成功"
                 },
                 "success": {
+                    "type": "boolean",
+                    "example": true
+                }
+            }
+        },
+        "handlers.LikeStatusData": {
+            "type": "object",
+            "properties": {
+                "is_liked": {
                     "type": "boolean",
                     "example": true
                 }
@@ -3274,9 +3433,6 @@ const docTemplate = `{
                 "is_used": {
                     "type": "boolean"
                 },
-                "qr_code_url": {
-                    "type": "string"
-                },
                 "token": {
                     "type": "string"
                 }
@@ -3382,7 +3538,7 @@ const docTemplate = `{
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "1.3.4",
+	Version:          "1.3.6",
 	Host:             "localhost:8080",
 	BasePath:         "/app",
 	Schemes:          []string{"http", "https"},

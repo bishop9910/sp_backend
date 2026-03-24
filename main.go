@@ -21,7 +21,7 @@ import (
 )
 
 // @title           sp_backend API
-// @version         1.3.4
+// @version         1.3.6
 // @description     社区平台 API 文档，包含用户、帖子、委托等功能
 // @termsOfService  http://swagger.io/terms/
 
@@ -145,35 +145,39 @@ func main() {
 
 	postRouter := protectedRouter.Group("/post")
 	{
-		postRouter.GET("/list", postHandler.GetPosts)                     // @Tags 帖子
-		postRouter.POST("/new", postHandler.NewPost)                      // @Tags 帖子
-		postRouter.POST("/delete", postHandler.DeletePost)                // @Tags 帖子
-		postRouter.POST("/comment", postHandler.CreatePostComment)        // @Tags 帖子
-		postRouter.GET("/comment", postHandler.GetPostComments)           // @Tags 帖子
-		postRouter.POST("/comment/delete", postHandler.DeletePostComment) // @Tags 帖子
-		postRouter.GET("/:post_id", postHandler.GetPostByID)              // @Tags 帖子
-		postRouter.POST("/like", postHandler.LikePost)                    // @Tags 帖子
-		postRouter.POST("/unlike", postHandler.UnlikePost)                // @Tags 帖子
-		postRouter.POST("/comment/like", postHandler.LikePostComment)     // @Tags 帖子
-		postRouter.POST("/comment/unlike", postHandler.UnlikePostComment) // @Tags 帖子
+		postRouter.GET("/list", postHandler.GetPosts)                                  // @Tags 帖子
+		postRouter.POST("/new", postHandler.NewPost)                                   // @Tags 帖子
+		postRouter.POST("/delete", postHandler.DeletePost)                             // @Tags 帖子
+		postRouter.POST("/comment", postHandler.CreatePostComment)                     // @Tags 帖子
+		postRouter.GET("/comment", postHandler.GetPostComments)                        // @Tags 帖子
+		postRouter.POST("/comment/delete", postHandler.DeletePostComment)              // @Tags 帖子
+		postRouter.GET("/:post_id", postHandler.GetPostByID)                           // @Tags 帖子
+		postRouter.POST("/like", postHandler.LikePost)                                 // @Tags 帖子
+		postRouter.POST("/unlike", postHandler.UnlikePost)                             // @Tags 帖子
+		postRouter.GET("/like/status", postHandler.CheckPostLikeStatus)                // @Tags 帖子
+		postRouter.POST("/comment/like", postHandler.LikePostComment)                  // @Tags 帖子
+		postRouter.POST("/comment/unlike", postHandler.UnlikePostComment)              // @Tags 帖子
+		postRouter.GET("/comment/like/status", postHandler.CheckPostCommentLikeStatus) // @Tags 帖子
 	}
 
 	entrustRouter := protectedRouter.Group("/entrust")
 	{
-		entrustRouter.GET("/list", entrustHandler.GetEntrusts)                     // @Tags 委托
-		entrustRouter.POST("/new", entrustHandler.NewEnturst)                      // @Tags 委托
-		entrustRouter.POST("/delete", entrustHandler.DeleteEntrust)                // @Tags 委托
-		entrustRouter.POST("/comment", entrustHandler.CreateEntrustComment)        // @Tags 委托
-		entrustRouter.GET("/comment", entrustHandler.GetEntrustComments)           // @Tags 委托
-		entrustRouter.POST("/comment/delete", entrustHandler.DeleteEntrustComment) // @Tags 委托
-		entrustRouter.GET("/:entrust_id", entrustHandler.GetEntrustByID)           // @Tags 委托
-		entrustRouter.POST("/like", entrustHandler.LikeEntrust)                    // @Tags 委托
-		entrustRouter.POST("/unlike", entrustHandler.UnlikeEntrust)                // @Tags 委托
-		entrustRouter.POST("/comment/like", entrustHandler.LikeEntrustComment)     // @Tags 委托
-		entrustRouter.POST("/comment/unlike", entrustHandler.UnlikeEntrustComment) // @Tags 委托
-		entrustRouter.POST("/accept", entrustHandler.AcceptEntrust)                // @Tags 委托
-		entrustRouter.POST("/get-qrcode", entrustHandler.GetQRCodeInfo)            // @Tags 委托二维码
-		entrustRouter.POST("/verify", entrustHandler.VerifyQRCode)                 // @Tags 委托二维码
+		entrustRouter.GET("/list", entrustHandler.GetEntrusts)                                  // @Tags 委托
+		entrustRouter.POST("/new", entrustHandler.NewEnturst)                                   // @Tags 委托
+		entrustRouter.POST("/delete", entrustHandler.DeleteEntrust)                             // @Tags 委托
+		entrustRouter.POST("/comment", entrustHandler.CreateEntrustComment)                     // @Tags 委托
+		entrustRouter.GET("/comment", entrustHandler.GetEntrustComments)                        // @Tags 委托
+		entrustRouter.POST("/comment/delete", entrustHandler.DeleteEntrustComment)              // @Tags 委托
+		entrustRouter.GET("/:entrust_id", entrustHandler.GetEntrustByID)                        // @Tags 委托
+		entrustRouter.POST("/like", entrustHandler.LikeEntrust)                                 // @Tags 委托
+		entrustRouter.POST("/unlike", entrustHandler.UnlikeEntrust)                             // @Tags 委托
+		entrustRouter.GET("/like/status", entrustHandler.CheckEntrustLikeStatus)                // @Tags 委托
+		entrustRouter.POST("/comment/like", entrustHandler.LikeEntrustComment)                  // @Tags 委托
+		entrustRouter.POST("/comment/unlike", entrustHandler.UnlikeEntrustComment)              // @Tags 委托
+		entrustRouter.GET("/comment/like/status", entrustHandler.CheckEntrustCommentLikeStatus) // @Tags 委托
+		entrustRouter.POST("/accept", entrustHandler.AcceptEntrust)                             // @Tags 委托
+		entrustRouter.POST("/get-qrcode", entrustHandler.GetQRCodeInfo)                         // @Tags 委托二维码
+		entrustRouter.GET("/verify", entrustHandler.VerifyQRCode)                               // @Tags 委托二维码
 	}
 
 	uploadRouter := protectedRouter.Group("/uploads")
@@ -186,10 +190,9 @@ func main() {
 
 	fileRouter := appRouter.Group("/files")
 	{
-		fileRouter.GET("/avatar/:filename", avatarHandler.AvatarsHandler)               // @Tags 头像
-		fileRouter.GET("/post/:filename", postHandler.HandlePostImage)                  // @Tags 帖子
-		fileRouter.GET("/entrust/:filename", entrustHandler.HandleEntrustImage)         // @Tags 委托
-		fileRouter.GET("/entrust/qrcode/:filename", entrustHandler.HandleEntrustQRCode) // @Tags 委托二维码
+		fileRouter.GET("/avatar/:filename", avatarHandler.AvatarsHandler)       // @Tags 头像
+		fileRouter.GET("/post/:filename", postHandler.HandlePostImage)          // @Tags 帖子
+		fileRouter.GET("/entrust/:filename", entrustHandler.HandleEntrustImage) // @Tags 委托
 	}
 
 	server.Run(":8080")
