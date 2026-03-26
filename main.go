@@ -5,7 +5,6 @@ import (
 	"log"
 	"os"
 	"sp_backend/config"
-	"sp_backend/frontend"
 	"sp_backend/handlers"
 	"sp_backend/middleware"
 	"sp_backend/models"
@@ -83,7 +82,6 @@ func main() {
 	}
 
 	server.Use(cors.New(config))
-	frontend.WebInit(server)
 
 	server.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
