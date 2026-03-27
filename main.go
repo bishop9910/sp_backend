@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"sp_backend/config"
+	"sp_backend/frontend"
 	"sp_backend/handlers"
 	"sp_backend/middleware"
 	"sp_backend/models"
@@ -15,8 +16,8 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	swaggerFiles "github.com/swaggo/files"
-	ginSwagger "github.com/swaggo/gin-swagger"
+	// swaggerFiles "github.com/swaggo/files"
+	// ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 // @title           sp_backend API
@@ -83,7 +84,7 @@ func main() {
 
 	server.Use(cors.New(config))
 
-	server.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	// server.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	userRepo := repository.NewUserRepository(db)
 
@@ -118,6 +119,8 @@ func main() {
 		LikeRepo:           likeRepo,
 		JwtConfig:          jwtConfig,
 	})
+
+	frontend.WebInit(server)
 
 	appRouter := server.Group("/app")
 
@@ -193,5 +196,5 @@ func main() {
 		fileRouter.GET("/entrust/:filename", entrustHandler.HandleEntrustImage) // @Tags 委托
 	}
 
-	server.Run(":8080")
+	server.RunTLS(":443", "./ssl/cert.pem", "./ssl/key.key")
 }
