@@ -608,6 +608,58 @@ const docTemplate = `{
                 }
             }
         },
+        "/app/entrust/image/delete": {
+            "post": {
+                "description": "仅作者或管理员可删除委托图片，同时删除数据库记录和本地文件。(正在进行/已结束的委托不能修改)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "委托"
+                ],
+                "summary": "删除委托图片",
+                "parameters": [
+                    {
+                        "description": "删除请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.DeleteEntrustImageRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.DeleteEntrustImageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/app/entrust/like": {
             "post": {
                 "description": "点赞委托,需要登陆",
@@ -945,6 +997,64 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "description": "仅作者或管理员可修改委托的标题、内容、截止时间、金币、信用等级。图片请用单独接口管理。(正在进行/已结束的委托不能修改)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "委托"
+                ],
+                "summary": "修改委托",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "format": "int64",
+                        "description": "委托ID",
+                        "name": "entrust_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "修改请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.UpdateEntrustRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.UpdateEntrustResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
                         "schema": {
                             "$ref": "#/definitions/handlers.ErrorResponse"
                         }
@@ -1439,6 +1549,58 @@ const docTemplate = `{
                 }
             }
         },
+        "/app/post/image/delete": {
+            "post": {
+                "description": "仅作者或管理员可删除帖子图片，同时删除数据库记录和本地文件",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "帖子"
+                ],
+                "summary": "删除帖子图片",
+                "parameters": [
+                    {
+                        "description": "删除请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.DeletePostImageRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.DeletePostImageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/app/post/like": {
             "post": {
                 "description": "点赞帖子,需要登陆",
@@ -1727,6 +1889,64 @@ const docTemplate = `{
                         }
                     }
                 }
+            },
+            "patch": {
+                "description": "仅作者或管理员可修改帖子的标题和内容，图片请用单独接口管理",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "帖子"
+                ],
+                "summary": "修改帖子",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "format": "int64",
+                        "description": "帖子ID",
+                        "name": "post_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "修改请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.UpdatePostRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.UpdatePostResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
             }
         },
         "/app/uploads/avatar": {
@@ -1823,7 +2043,7 @@ const docTemplate = `{
         },
         "/app/uploads/entrust": {
             "post": {
-                "description": "拿图片文件列表遍历访问我 注意！！那个image是string类型是错的应该为file文件",
+                "description": "拿图片文件列表遍历访问我 注意！！那个image是string类型是错的应该为file文件 (正在进行/已结束的委托不能修改)",
                 "consumes": [
                     "multipart/form-data"
                 ],
@@ -1913,6 +2133,197 @@ const docTemplate = `{
                 }
             }
         },
+        "/app/user/adjust-coin": {
+            "post": {
+                "description": "仅管理员可调用，amount\u003e0 增加金币，amount\u003c0 扣除金币",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "用户"
+                ],
+                "summary": "管理员调整用户信用金币",
+                "parameters": [
+                    {
+                        "description": "信用金币调整请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.AdjustCreditCoinRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.AdjustCreditCoinResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/app/user/adjust-credit": {
+            "post": {
+                "description": "仅管理员可调用，amount\u003e0 加分，amount\u003c0 减分，信用分最低为0",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "用户"
+                ],
+                "summary": "管理员调整用户信用分",
+                "parameters": [
+                    {
+                        "description": "信用分调整请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.AdjustCreditScoreRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.AdjustCreditScoreResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/app/user/ban": {
+            "post": {
+                "description": "仅管理员可调用，设置目标用户的封禁状态。注意：不能封禁其他管理员（除非是超级管理员）",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "用户"
+                ],
+                "summary": "管理员封禁或解封用户",
+                "parameters": [
+                    {
+                        "description": "封禁操作请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.BanRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.BanResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/app/user/check-in": {
+            "get": {
+                "description": "用户每日签到，每人每天限签一次，签到成功金币+1",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "用户"
+                ],
+                "summary": "用户每日签到",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.CheckInResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/app/user/edit": {
             "post": {
                 "description": "只能修改邮箱，昵称，性别(2女,1男,0未知)，生日，签名",
@@ -1961,7 +2372,7 @@ const docTemplate = `{
         },
         "/app/user/edit-other": {
             "post": {
-                "description": "除了ID和用户名和密码和头像(不在这里改)改不了其他都能改",
+                "description": "除了ID和用户名和密码和头像和权限和信用分和信用金币(不在这里改)改不了其他都能改",
                 "consumes": [
                     "application/json"
                 ],
@@ -2033,6 +2444,58 @@ const docTemplate = `{
                     },
                     "401": {
                         "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/app/user/update-permission": {
+            "post": {
+                "description": "仅超级管理员可调用，用于授予或撤销管理员权限",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "用户"
+                ],
+                "summary": "超级管理员修改用户权限",
+                "parameters": [
+                    {
+                        "description": "权限修改请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.UpdatePermissionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.UpdatePermissionResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
                         "schema": {
                             "$ref": "#/definitions/handlers.ErrorResponse"
                         }
@@ -2324,6 +2787,115 @@ const docTemplate = `{
                 }
             }
         },
+        "handlers.AdjustCreditCoinRequest": {
+            "type": "object",
+            "required": [
+                "amount",
+                "user_id"
+            ],
+            "properties": {
+                "amount": {
+                    "description": "正数=增加，负数=减少",
+                    "type": "integer",
+                    "example": 50
+                },
+                "reason": {
+                    "description": "调整原因（可选，用于日志）",
+                    "type": "string",
+                    "example": "活动奖励/违规扣除"
+                },
+                "user_id": {
+                    "type": "integer",
+                    "example": 123
+                }
+            }
+        },
+        "handlers.AdjustCreditCoinResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "changed": {
+                            "description": "实际变动值（可能因余额不足被截断）",
+                            "type": "integer"
+                        },
+                        "new_coin": {
+                            "type": "integer"
+                        },
+                        "old_coin": {
+                            "type": "integer"
+                        },
+                        "operator_id": {
+                            "type": "integer"
+                        },
+                        "updated_at": {
+                            "type": "string"
+                        },
+                        "user_id": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "message": {
+                    "type": "string"
+                },
+                "success": {
+                    "type": "boolean",
+                    "example": true
+                }
+            }
+        },
+        "handlers.AdjustCreditScoreRequest": {
+            "type": "object",
+            "required": [
+                "amount",
+                "user_id"
+            ],
+            "properties": {
+                "amount": {
+                    "description": "正数=加分，负数=减分",
+                    "type": "integer",
+                    "example": 10
+                },
+                "user_id": {
+                    "type": "integer",
+                    "example": 123
+                }
+            }
+        },
+        "handlers.AdjustCreditScoreResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "changed_by": {
+                            "type": "integer"
+                        },
+                        "new_score": {
+                            "type": "integer"
+                        },
+                        "old_score": {
+                            "type": "integer"
+                        },
+                        "updated_at": {
+                            "type": "string"
+                        },
+                        "user_id": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "message": {
+                    "type": "string"
+                },
+                "success": {
+                    "type": "boolean",
+                    "example": true
+                }
+            }
+        },
         "handlers.AuthorBase": {
             "type": "object",
             "properties": {
@@ -2344,6 +2916,85 @@ const docTemplate = `{
                 "url": {
                     "type": "string",
                     "example": "/avatars/xxxx.png"
+                }
+            }
+        },
+        "handlers.BanRequest": {
+            "type": "object",
+            "required": [
+                "is_prohibited",
+                "user_id"
+            ],
+            "properties": {
+                "is_prohibited": {
+                    "description": "true=封禁, false=解封",
+                    "type": "boolean",
+                    "example": true
+                },
+                "reason": {
+                    "description": "封禁原因（可选，可扩展日志用）",
+                    "type": "string",
+                    "example": "违反社区规则"
+                },
+                "user_id": {
+                    "type": "integer",
+                    "example": 123
+                }
+            }
+        },
+        "handlers.BanResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "is_prohibited": {
+                            "type": "boolean"
+                        },
+                        "updated_at": {
+                            "type": "string"
+                        },
+                        "user_id": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "message": {
+                    "type": "string"
+                },
+                "success": {
+                    "type": "boolean",
+                    "example": true
+                }
+            }
+        },
+        "handlers.CheckInResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/handlers.CheckInResponseData"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "success": {
+                    "type": "boolean",
+                    "example": true
+                }
+            }
+        },
+        "handlers.CheckInResponseData": {
+            "type": "object",
+            "properties": {
+                "credit_coin": {
+                    "description": "签到后金币数量",
+                    "type": "integer",
+                    "example": 101
+                },
+                "is_new_check_in": {
+                    "description": "是否本次为新签到",
+                    "type": "boolean",
+                    "example": true
                 }
             }
         },
@@ -2448,6 +3099,29 @@ const docTemplate = `{
                 }
             }
         },
+        "handlers.DeleteEntrustImageRequest": {
+            "type": "object",
+            "required": [
+                "image_id"
+            ],
+            "properties": {
+                "image_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "handlers.DeleteEntrustImageResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                },
+                "success": {
+                    "type": "boolean",
+                    "example": true
+                }
+            }
+        },
         "handlers.DeleteEntrustRequest": {
             "type": "object",
             "properties": {
@@ -2485,6 +3159,29 @@ const docTemplate = `{
                 "message": {
                     "type": "string",
                     "example": "删除成功"
+                },
+                "success": {
+                    "type": "boolean",
+                    "example": true
+                }
+            }
+        },
+        "handlers.DeletePostImageRequest": {
+            "type": "object",
+            "required": [
+                "image_id"
+            ],
+            "properties": {
+                "image_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "handlers.DeletePostImageResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
                 },
                 "success": {
                     "type": "boolean",
@@ -2731,6 +3428,9 @@ const docTemplate = `{
                 },
                 "id": {
                     "type": "integer"
+                },
+                "is_prohibited": {
+                    "type": "boolean"
                 },
                 "nickname": {
                     "type": "string"
@@ -3028,6 +3728,9 @@ const docTemplate = `{
                 "content": {
                     "type": "string"
                 },
+                "over_time": {
+                    "type": "string"
+                },
                 "title": {
                     "type": "string"
                 }
@@ -3292,6 +3995,146 @@ const docTemplate = `{
                 }
             }
         },
+        "handlers.UpdateEntrustRequest": {
+            "type": "object",
+            "properties": {
+                "allowed_credit_score_level": {
+                    "description": "可选",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/enums.CreditScoreLevel"
+                        }
+                    ]
+                },
+                "coin": {
+                    "description": "可选，10-50",
+                    "type": "integer",
+                    "maximum": 50,
+                    "minimum": 10
+                },
+                "content": {
+                    "description": "可选",
+                    "type": "string"
+                },
+                "over_time": {
+                    "description": "可选",
+                    "type": "string"
+                },
+                "title": {
+                    "description": "可选",
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.UpdateEntrustResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "entrust_id": {
+                            "type": "integer"
+                        },
+                        "updated_at": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "message": {
+                    "type": "string"
+                },
+                "success": {
+                    "type": "boolean",
+                    "example": true
+                }
+            }
+        },
+        "handlers.UpdatePermissionRequest": {
+            "type": "object",
+            "required": [
+                "permission",
+                "user_id"
+            ],
+            "properties": {
+                "permission": {
+                    "description": "0=普通用户, 1=管理员",
+                    "type": "integer",
+                    "example": 1
+                },
+                "user_id": {
+                    "type": "integer",
+                    "example": 123
+                }
+            }
+        },
+        "handlers.UpdatePermissionResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "changed_by": {
+                            "type": "string"
+                        },
+                        "new_permission": {
+                            "type": "string"
+                        },
+                        "old_permission": {
+                            "type": "string"
+                        },
+                        "updated_at": {
+                            "type": "string"
+                        },
+                        "user_id": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "message": {
+                    "type": "string"
+                },
+                "success": {
+                    "type": "boolean",
+                    "example": true
+                }
+            }
+        },
+        "handlers.UpdatePostRequest": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "description": "可选，nil 表示不修改",
+                    "type": "string"
+                },
+                "title": {
+                    "description": "可选，nil 表示不修改",
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.UpdatePostResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "post_id": {
+                            "type": "integer"
+                        },
+                        "updated_at": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "message": {
+                    "type": "string"
+                },
+                "success": {
+                    "type": "boolean",
+                    "example": true
+                }
+            }
+        },
         "handlers.UploadAvatarRequest": {
             "type": "object",
             "properties": {
@@ -3387,6 +4230,9 @@ const docTemplate = `{
                         "$ref": "#/definitions/models.CommunityEntrustImage"
                     }
                 },
+                "is_expired": {
+                    "type": "boolean"
+                },
                 "is_over": {
                     "type": "boolean"
                 },
@@ -3395,6 +4241,9 @@ const docTemplate = `{
                 },
                 "like_count": {
                     "type": "integer"
+                },
+                "over_time": {
+                    "type": "string"
                 },
                 "title": {
                     "type": "string"
@@ -3538,7 +4387,7 @@ const docTemplate = `{
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "1.3.6",
+	Version:          "1.3.7",
 	Host:             "localhost:8080",
 	BasePath:         "/app",
 	Schemes:          []string{"http", "https"},

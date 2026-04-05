@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
 
+	"sp_backend/config"
 	"sp_backend/enums"
 	"sp_backend/models"
 	"sp_backend/repository"
@@ -206,7 +207,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		Password: string(hashedPassword),
 	}
 
-	if newUser.Username == "bishop9910" {
+	if config.IsSuperAdmin(newUser.Username) {
 		newUser.Permission = enums.AdminPermission
 	}
 

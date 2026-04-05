@@ -2,6 +2,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"sp_backend/config"
@@ -16,12 +17,13 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	// swaggerFiles "github.com/swaggo/files"
-	// ginSwagger "github.com/swaggo/gin-swagger"
+	"github.com/robfig/cron/v3"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 // @title           sp_backend API
-// @version         1.3.6
+// @version         1.3.7
 // @description     社区平台 API 文档，包含用户、帖子、委托等功能
 // @termsOfService  http://swagger.io/terms/
 
@@ -70,9 +72,9 @@ func main() {
 
 	server := gin.Default()
 
-	config := cors.DefaultConfig()
-	config.AllowAllOrigins = true
-	config.AllowHeaders = []string{
+	corsConfig := cors.DefaultConfig()
+	corsConfig.AllowAllOrigins = true
+	corsConfig.AllowHeaders = []string{
 		"Origin",
 		"Content-Type",
 		"Accept",
@@ -82,9 +84,7 @@ func main() {
 		"X-Request-ID",
 	}
 
-	server.Use(cors.New(config))
-
-	// server.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	server.Use(cors.New(corsConfig))
 
 	userRepo := repository.NewUserRepository(db)
 
@@ -120,7 +120,10 @@ func main() {
 		JwtConfig:          jwtConfig,
 	})
 
+	server.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
 	frontend.WebInit(server)
+	config.InitSuperAdminConfig()
 
 	appRouter := server.Group("/app")
 
@@ -142,17 +145,25 @@ func main() {
 		userRouter.GET("/:user_id/posts", postHandler.GetPostByUser)                           // @Tags 帖子
 		userRouter.GET("/:user_id/entrusts", entrustHandler.GetEntrustByUser)                  // @Tags 委托
 		userRouter.GET("/:user_id/entrusts/accepted", entrustHandler.GetAcceptedEntrustByUser) // @Tags 委托
+		userRouter.GET("/check-in", userHandler.CheckIn)                                       // @Tags 用户
+		userRouter.POST("/ban", userHandler.BanUser)                                           // @Tags 用户
+		userRouter.POST("/adjust-credit", userHandler.AdjustCreditScore)                       // @Tags 用户
+		userRouter.POST("/adjust-coin", userHandler.AdjustCreditCoin)                          // @Tags 用户
+		userRouter.POST("/update-permission", userHandler.UpdateUserPermission)                // @Tags 用户
 	}
 
 	postRouter := protectedRouter.Group("/post")
+	postRouter.Use(userHandler.CheckBanStatus())
 	{
 		postRouter.GET("/list", postHandler.GetPosts)                                  // @Tags 帖子
 		postRouter.POST("/new", postHandler.NewPost)                                   // @Tags 帖子
 		postRouter.POST("/delete", postHandler.DeletePost)                             // @Tags 帖子
+		postRouter.POST("/image/delete", postHandler.DeletePostImage)                  // @Tags 帖子
 		postRouter.POST("/comment", postHandler.CreatePostComment)                     // @Tags 帖子
 		postRouter.GET("/comment", postHandler.GetPostComments)                        // @Tags 帖子
 		postRouter.POST("/comment/delete", postHandler.DeletePostComment)              // @Tags 帖子
 		postRouter.GET("/:post_id", postHandler.GetPostByID)                           // @Tags 帖子
+		postRouter.PATCH("/:post_id", postHandler.UpdatePost)                          // @Tags 帖子
 		postRouter.POST("/like", postHandler.LikePost)                                 // @Tags 帖子
 		postRouter.POST("/unlike", postHandler.UnlikePost)                             // @Tags 帖子
 		postRouter.GET("/like/status", postHandler.CheckPostLikeStatus)                // @Tags 帖子
@@ -162,14 +173,17 @@ func main() {
 	}
 
 	entrustRouter := protectedRouter.Group("/entrust")
+	entrustRouter.Use(userHandler.CheckBanStatus())
 	{
 		entrustRouter.GET("/list", entrustHandler.GetEntrusts)                                  // @Tags 委托
 		entrustRouter.POST("/new", entrustHandler.NewEnturst)                                   // @Tags 委托
 		entrustRouter.POST("/delete", entrustHandler.DeleteEntrust)                             // @Tags 委托
+		entrustRouter.POST("/image/delete", entrustHandler.DeleteEntrustImage)                  // @Tags 委托
 		entrustRouter.POST("/comment", entrustHandler.CreateEntrustComment)                     // @Tags 委托
 		entrustRouter.GET("/comment", entrustHandler.GetEntrustComments)                        // @Tags 委托
 		entrustRouter.POST("/comment/delete", entrustHandler.DeleteEntrustComment)              // @Tags 委托
 		entrustRouter.GET("/:entrust_id", entrustHandler.GetEntrustByID)                        // @Tags 委托
+		entrustRouter.PATCH("/:entrust_id", entrustHandler.UpdateEntrust)                       // @Tags 委托
 		entrustRouter.POST("/like", entrustHandler.LikeEntrust)                                 // @Tags 委托
 		entrustRouter.POST("/unlike", entrustHandler.UnlikeEntrust)                             // @Tags 委托
 		entrustRouter.GET("/like/status", entrustHandler.CheckEntrustLikeStatus)                // @Tags 委托
@@ -182,6 +196,7 @@ func main() {
 	}
 
 	uploadRouter := protectedRouter.Group("/uploads")
+	uploadRouter.Use(userHandler.CheckBanStatus())
 	{
 		uploadRouter.POST("/avatar", avatarHandler.UploadAvatar)            // @Tags 头像
 		uploadRouter.POST("/avatar-other", avatarHandler.UploadOtherAvatar) // @Tags 头像
@@ -196,5 +211,14 @@ func main() {
 		fileRouter.GET("/entrust/:filename", entrustHandler.HandleEntrustImage) // @Tags 委托
 	}
 
-	server.RunTLS(":443", "./ssl/cert.pem", "./ssl/key.key")
+	c := cron.New()
+	_, err = c.AddFunc("@every 5m", entrustHandler.CheckEntrustIsExpire)
+	if err != nil {
+		fmt.Printf("添加定时任务失败: %v", err)
+		return
+	}
+	c.Start()
+
+	server.Run(":8080")
+	// server.RunTLS(":443", "./ssl/cert.pem", "./ssl/key.key")
 }

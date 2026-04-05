@@ -28,10 +28,6 @@ func (r *PostRepository) Update(p *models.CommunityPost) error {
 	return r.db.Model(p).Updates(p).Error
 }
 
-func (r *PostRepository) UpdateFields(id uint64, updates map[string]interface{}) error {
-	return r.db.Model(&models.CommunityPost{}).Where("id = ?", id).Updates(updates).Error
-}
-
 func (r *PostRepository) Delete(id uint64) error {
 	return r.db.Delete(&models.CommunityPost{}, id).Error
 }
@@ -94,4 +90,11 @@ func (r *PostRepository) ListByUserWithPreload(userID uint64, page, pageSize int
 		Find(&posts).Error
 
 	return posts, total, err
+}
+
+// UpdatePostFields 原子更新帖子指定字段（避免零值覆盖）
+func (r *PostRepository) UpdatePostFields(postID uint64, updates map[string]interface{}) error {
+	return r.db.Model(&models.CommunityPost{}).
+		Where("id = ?", postID).
+		Updates(updates).Error
 }

@@ -35,3 +35,9 @@ func (r *PostImageRepository) Delete(id uint64) error {
 func (r *PostImageRepository) DeleteByPostID(postID uint64) error {
 	return r.db.Where("post_id = ?", postID).Delete(&models.CommunityPostImage{}).Error
 }
+
+func (r *PostImageRepository) GetByID(id uint64) (*models.CommunityPostImage, error) {
+	var p models.CommunityPostImage
+	err := r.db.Where("id = ?", id).First(&p).Error
+	return &p, err
+}

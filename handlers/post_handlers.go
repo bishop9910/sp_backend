@@ -7,12 +7,14 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sp_backend/config"
 	"sp_backend/enums"
 	"sp_backend/models"
 	"sp_backend/repository"
 	"sp_backend/utils"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -212,6 +214,17 @@ func (h *PostHandler) AddPostImage(c *gin.Context) {
 	if post.UserID != user.ID && user.Permission != enums.AdminPermission {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot edit other's post"})
 		c.Abort()
+		return
+	}
+
+	authorUser, err := h.userRepo.GetByID(post.UserID)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid user"})
+		return
+	}
+
+	if authorUser.Permission == enums.AdminPermission && !config.IsSuperAdmin(user.Username) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "permission denied: only super admin can edit"})
 		return
 	}
 
@@ -665,6 +678,14 @@ func (h *PostHandler) LikePost(c *gin.Context) {
 		return
 	}
 
+	post, err := h.postRepo.GetByID(req.PostID)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "entrust not found"})
+		c.Abort()
+		return
+	}
+	h.userRepo.AddCreditCoin(post.UserID, 1)
+
 	c.JSON(http.StatusOK, LikePostResponse{
 		Success: true,
 		Message: "点赞成功",
@@ -726,6 +747,14 @@ func (h *PostHandler) UnlikePost(c *gin.Context) {
 		})
 		return
 	}
+
+	post, err := h.postRepo.GetByID(req.PostID)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "entrust not found"})
+		c.Abort()
+		return
+	}
+	h.userRepo.DivCreditCoin(post.UserID, 1)
 
 	c.JSON(http.StatusOK, UnlikePostResponse{
 		Success: true,
@@ -1070,6 +1099,14 @@ func (h *PostHandler) LikePostComment(c *gin.Context) {
 		return
 	}
 
+	postComment, err := h.postRepo.GetByID(req.CommentID)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "entrust not found"})
+		c.Abort()
+		return
+	}
+	h.userRepo.AddCreditCoin(postComment.UserID, 1)
+
 	c.JSON(http.StatusOK, LikePostCommentResponse{
 		Success: true,
 		Message: "点赞成功",
@@ -1131,6 +1168,14 @@ func (h *PostHandler) UnlikePostComment(c *gin.Context) {
 		})
 		return
 	}
+
+	postComment, err := h.postRepo.GetByID(req.CommentID)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "entrust not found"})
+		c.Abort()
+		return
+	}
+	h.userRepo.DivCreditCoin(postComment.UserID, 1)
 
 	c.JSON(http.StatusOK, UnlikePostCommentResponse{
 		Success: true,
@@ -1250,5 +1295,231 @@ func (h *PostHandler) CheckPostCommentLikeStatus(c *gin.Context) {
 		Data: LikeStatusData{
 			IsLiked: isLiked,
 		},
+	})
+}
+
+// UpdatePostRequest 修改帖子请求（文本部分）
+type UpdatePostRequest struct {
+	Title   *string `json:"title,omitempty"`   // 可选，nil 表示不修改
+	Content *string `json:"content,omitempty"` // 可选，nil 表示不修改
+}
+
+// UpdatePostResponse 修改帖子响应
+type UpdatePostResponse struct {
+	Success bool   `json:"success" example:"true"`
+	Message string `json:"message"`
+	Data    struct {
+		PostID    uint64 `json:"post_id"`
+		UpdatedAt string `json:"updated_at"`
+	} `json:"data,omitempty"`
+}
+
+// UpdatePost 修改帖子（标题/内容）
+// @Summary      修改帖子
+// @Description  仅作者或管理员可修改帖子的标题和内容，图片请用单独接口管理
+// @Tags         帖子
+// @Accept       json
+// @Produce      json
+// @Param        post_id  path    uint64            true  "帖子ID"
+// @Param        request  body    UpdatePostRequest true  "修改请求"
+// @Success      200      {object} UpdatePostResponse
+// @Failure      400      {object} ErrorResponse
+// @Failure      401      {object} ErrorResponse
+// @Failure      403      {object} ErrorResponse
+// @Router       /app/post/{post_id} [patch]
+func (h *PostHandler) UpdatePost(c *gin.Context) {
+	// 1. 解析路径参数
+	postID, err := strconv.ParseUint(c.Param("post_id"), 10, 64)
+	if err != nil || postID == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid post_id"})
+		return
+	}
+
+	// 2. 解析请求体
+	var req UpdatePostRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+
+	// 至少修改一个字段
+	if req.Title == nil && req.Content == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "no fields to update"})
+		return
+	}
+
+	// 3. 获取当前用户
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+	currentUID := userID.(uint64)
+
+	// 4. 查询帖子 + 权限校验
+	post, err := h.postRepo.GetByID(postID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "post not found"})
+		return
+	}
+
+	currentUser, err := h.userRepo.GetByID(currentUID)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid user"})
+		return
+	}
+
+	// 权限：作者 或 管理员
+	if post.UserID != currentUser.ID && currentUser.Permission != enums.AdminPermission {
+		c.JSON(http.StatusForbidden, gin.H{"error": "permission denied: only author or admin can edit"})
+		return
+	}
+
+	authorUser, err := h.userRepo.GetByID(post.UserID)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid user"})
+		return
+	}
+
+	if authorUser.Permission == enums.AdminPermission && !config.IsSuperAdmin(currentUser.Username) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "permission denied: only super admin can edit"})
+		return
+	}
+
+	// 5. 构建更新字段（只更新非 nil 字段）
+	updates := make(map[string]interface{})
+	if req.Title != nil {
+		title := strings.TrimSpace(*req.Title)
+		if title == "" {
+			title = "未命名标题"
+		}
+		updates["title"] = title
+	}
+	if req.Content != nil {
+		content := strings.TrimSpace(*req.Content)
+		if content == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "content cannot be empty"})
+			return
+		}
+		if len(content) > 65535 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "content too long (max 65535 chars)"})
+			return
+		}
+		updates["content"] = content
+	}
+	updates["updated_at"] = time.Now()
+
+	// 6. 执行更新
+	if err := h.postRepo.UpdatePostFields(postID, updates); err != nil {
+		log.Printf("[UpdatePost] update failed: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "update failed"})
+		return
+	}
+
+	// 7. 返回响应
+	c.JSON(http.StatusOK, UpdatePostResponse{
+		Success: true,
+		Message: "post updated successfully",
+		Data: struct {
+			PostID    uint64 `json:"post_id"`
+			UpdatedAt string `json:"updated_at"`
+		}{
+			PostID:    postID,
+			UpdatedAt: time.Now().Format(time.RFC3339),
+		},
+	})
+}
+
+// DeletePostImageRequest 删除图片请求
+type DeletePostImageRequest struct {
+	ImageID uint64 `json:"image_id" binding:"required"`
+}
+
+// DeletePostImageResponse 删除图片响应
+type DeletePostImageResponse struct {
+	Success bool   `json:"success" example:"true"`
+	Message string `json:"message"`
+}
+
+// DeletePostImage 删除帖子关联的图片
+// @Summary      删除帖子图片
+// @Description  仅作者或管理员可删除帖子图片，同时删除数据库记录和本地文件
+// @Tags         帖子
+// @Accept       json
+// @Produce      json
+// @Param        request  body  DeletePostImageRequest  true  "删除请求"
+// @Success      200  {object} DeletePostImageResponse
+// @Failure      400  {object} ErrorResponse
+// @Failure      401  {object} ErrorResponse
+// @Failure      403  {object} ErrorResponse
+// @Router       /app/post/image/delete [post]
+func (h *PostHandler) DeletePostImage(c *gin.Context) {
+	var req DeletePostImageRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		return
+	}
+
+	// 1. 获取当前用户
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+	currentUID := userID.(uint64)
+
+	// 2. 查询图片记录
+	image, err := h.postImageRepo.GetByID(req.ImageID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "image not found"})
+		return
+	}
+
+	// 3. 查询帖子 + 权限校验
+	post, err := h.postRepo.GetByID(image.PostID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "post not found"})
+		return
+	}
+
+	currentUser, err := h.userRepo.GetByID(currentUID)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid user"})
+		return
+	}
+
+	if post.UserID != currentUser.ID && currentUser.Permission != enums.AdminPermission {
+		c.JSON(http.StatusForbidden, gin.H{"error": "permission denied"})
+		return
+	}
+
+	authorUser, err := h.userRepo.GetByID(post.UserID)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid user"})
+		return
+	}
+
+	if authorUser.Permission == enums.AdminPermission && !config.IsSuperAdmin(currentUser.Username) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "permission denied: only super admin can edit"})
+		return
+	}
+
+	// 4. 删除本地文件
+	// 解析文件名: /files/post/xxx.jpg -> xxx.jpg
+	parts := strings.Split(image.ImageURL, "/")
+	filename := parts[len(parts)-1]
+	if err := utils.DeleteImageFile(filename, h.postImageConfig.imageDir); err != nil {
+		log.Printf("[DeletePostImage] delete file failed: %v", err)
+	}
+
+	// 5. 删除数据库记录
+	if err := h.postImageRepo.Delete(req.ImageID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete image record"})
+		return
+	}
+
+	c.JSON(http.StatusOK, DeletePostImageResponse{
+		Success: true,
+		Message: "image deleted successfully",
 	})
 }

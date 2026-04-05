@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sp_backend/enums"
 	"sp_backend/models"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -202,8 +203,8 @@ func (r *EntrustRepository) CompleteEntrust(entrustID, acceptorID uint64) (bool,
 	// 执行更新
 	result := r.db.
 		Model(&models.CommunityEntrust{}).
-		Where("id = ? AND acceptor_id = ? AND is_progressing = ? AND is_over = ?",
-			entrustID, acceptorID, true, false).
+		Where("id = ? AND acceptor_id = ? AND is_progressing = ? AND is_over = ? AND is_expired = ?",
+			entrustID, acceptorID, true, false, false).
 		Updates(map[string]interface{}{
 			"is_progressing": false,
 			"is_over":        true,
@@ -218,4 +219,31 @@ func (r *EntrustRepository) CompleteEntrust(entrustID, acceptorID uint64) (bool,
 	}
 
 	return true, nil
+}
+
+func (r *EntrustRepository) FindEntrustIsExpire() ([]models.CommunityEntrust, error) {
+	var expiredEntrusts []models.CommunityEntrust
+
+	now := time.Now()
+
+	// 查询条件：未结束 + 过期时间已过
+	// 预加载 Images 便于后续业务处理（如通知、日志等）
+	err := r.db.
+		Preload("Images").
+		Where("is_over = ? AND over_time < ?", false, now).
+		Find(&expiredEntrusts).
+		Error
+
+	if err != nil {
+		return nil, fmt.Errorf("查询过期委托失败：%w", err)
+	}
+
+	return expiredEntrusts, nil
+}
+
+// UpdateEntrustFields 原子更新委托指定字段（避免零值覆盖）
+func (r *EntrustRepository) UpdateEntrustFields(entrustID uint64, updates map[string]interface{}) error {
+	return r.db.Model(&models.CommunityEntrust{}).
+		Where("id = ?", entrustID).
+		Updates(updates).Error
 }

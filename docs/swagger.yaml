@@ -78,6 +78,81 @@ definitions:
         example: true
         type: boolean
     type: object
+  handlers.AdjustCreditCoinRequest:
+    properties:
+      amount:
+        description: 正数=增加，负数=减少
+        example: 50
+        type: integer
+      reason:
+        description: 调整原因（可选，用于日志）
+        example: 活动奖励/违规扣除
+        type: string
+      user_id:
+        example: 123
+        type: integer
+    required:
+    - amount
+    - user_id
+    type: object
+  handlers.AdjustCreditCoinResponse:
+    properties:
+      data:
+        properties:
+          changed:
+            description: 实际变动值（可能因余额不足被截断）
+            type: integer
+          new_coin:
+            type: integer
+          old_coin:
+            type: integer
+          operator_id:
+            type: integer
+          updated_at:
+            type: string
+          user_id:
+            type: integer
+        type: object
+      message:
+        type: string
+      success:
+        example: true
+        type: boolean
+    type: object
+  handlers.AdjustCreditScoreRequest:
+    properties:
+      amount:
+        description: 正数=加分，负数=减分
+        example: 10
+        type: integer
+      user_id:
+        example: 123
+        type: integer
+    required:
+    - amount
+    - user_id
+    type: object
+  handlers.AdjustCreditScoreResponse:
+    properties:
+      data:
+        properties:
+          changed_by:
+            type: integer
+          new_score:
+            type: integer
+          old_score:
+            type: integer
+          updated_at:
+            type: string
+          user_id:
+            type: integer
+        type: object
+      message:
+        type: string
+      success:
+        example: true
+        type: boolean
+    type: object
   handlers.AuthorBase:
     properties:
       avatar:
@@ -92,6 +167,61 @@ definitions:
       url:
         example: /avatars/xxxx.png
         type: string
+    type: object
+  handlers.BanRequest:
+    properties:
+      is_prohibited:
+        description: true=封禁, false=解封
+        example: true
+        type: boolean
+      reason:
+        description: 封禁原因（可选，可扩展日志用）
+        example: 违反社区规则
+        type: string
+      user_id:
+        example: 123
+        type: integer
+    required:
+    - is_prohibited
+    - user_id
+    type: object
+  handlers.BanResponse:
+    properties:
+      data:
+        properties:
+          is_prohibited:
+            type: boolean
+          updated_at:
+            type: string
+          user_id:
+            type: integer
+        type: object
+      message:
+        type: string
+      success:
+        example: true
+        type: boolean
+    type: object
+  handlers.CheckInResponse:
+    properties:
+      data:
+        $ref: '#/definitions/handlers.CheckInResponseData'
+      message:
+        type: string
+      success:
+        example: true
+        type: boolean
+    type: object
+  handlers.CheckInResponseData:
+    properties:
+      credit_coin:
+        description: 签到后金币数量
+        example: 101
+        type: integer
+      is_new_check_in:
+        description: 是否本次为新签到
+        example: true
+        type: boolean
     type: object
   handlers.CheckLikeStatusResponse:
     properties:
@@ -163,6 +293,21 @@ definitions:
         example: true
         type: boolean
     type: object
+  handlers.DeleteEntrustImageRequest:
+    properties:
+      image_id:
+        type: integer
+    required:
+    - image_id
+    type: object
+  handlers.DeleteEntrustImageResponse:
+    properties:
+      message:
+        type: string
+      success:
+        example: true
+        type: boolean
+    type: object
   handlers.DeleteEntrustRequest:
     properties:
       entrust_id:
@@ -187,6 +332,21 @@ definitions:
     properties:
       message:
         example: 删除成功
+        type: string
+      success:
+        example: true
+        type: boolean
+    type: object
+  handlers.DeletePostImageRequest:
+    properties:
+      image_id:
+        type: integer
+    required:
+    - image_id
+    type: object
+  handlers.DeletePostImageResponse:
+    properties:
+      message:
         type: string
       success:
         example: true
@@ -349,6 +509,8 @@ definitions:
         type: string
       id:
         type: integer
+      is_prohibited:
+        type: boolean
       nickname:
         type: string
       permission:
@@ -546,6 +708,8 @@ definitions:
         type: integer
       content:
         type: string
+      over_time:
+        type: string
       title:
         type: string
     type: object
@@ -722,6 +886,100 @@ definitions:
         example: true
         type: boolean
     type: object
+  handlers.UpdateEntrustRequest:
+    properties:
+      allowed_credit_score_level:
+        allOf:
+        - $ref: '#/definitions/enums.CreditScoreLevel'
+        description: 可选
+      coin:
+        description: 可选，10-50
+        maximum: 50
+        minimum: 10
+        type: integer
+      content:
+        description: 可选
+        type: string
+      over_time:
+        description: 可选
+        type: string
+      title:
+        description: 可选
+        type: string
+    type: object
+  handlers.UpdateEntrustResponse:
+    properties:
+      data:
+        properties:
+          entrust_id:
+            type: integer
+          updated_at:
+            type: string
+        type: object
+      message:
+        type: string
+      success:
+        example: true
+        type: boolean
+    type: object
+  handlers.UpdatePermissionRequest:
+    properties:
+      permission:
+        description: 0=普通用户, 1=管理员
+        example: 1
+        type: integer
+      user_id:
+        example: 123
+        type: integer
+    required:
+    - permission
+    - user_id
+    type: object
+  handlers.UpdatePermissionResponse:
+    properties:
+      data:
+        properties:
+          changed_by:
+            type: string
+          new_permission:
+            type: string
+          old_permission:
+            type: string
+          updated_at:
+            type: string
+          user_id:
+            type: integer
+        type: object
+      message:
+        type: string
+      success:
+        example: true
+        type: boolean
+    type: object
+  handlers.UpdatePostRequest:
+    properties:
+      content:
+        description: 可选，nil 表示不修改
+        type: string
+      title:
+        description: 可选，nil 表示不修改
+        type: string
+    type: object
+  handlers.UpdatePostResponse:
+    properties:
+      data:
+        properties:
+          post_id:
+            type: integer
+          updated_at:
+            type: string
+        type: object
+      message:
+        type: string
+      success:
+        example: true
+        type: boolean
+    type: object
   handlers.UploadAvatarRequest:
     properties:
       avatar:
@@ -797,12 +1055,16 @@ definitions:
         items:
           $ref: '#/definitions/models.CommunityEntrustImage'
         type: array
+      is_expired:
+        type: boolean
       is_over:
         type: boolean
       is_progressing:
         type: boolean
       like_count:
         type: integer
+      over_time:
+        type: string
       title:
         type: string
       user_id:
@@ -898,7 +1160,7 @@ info:
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: http://swagger.io/terms/
   title: sp_backend API
-  version: 1.3.6
+  version: 1.3.7
 paths:
   /app/auth/login:
     post:
@@ -1018,6 +1280,45 @@ paths:
           schema:
             $ref: '#/definitions/handlers.ErrorResponse'
       summary: 获取委托
+      tags:
+      - 委托
+    patch:
+      consumes:
+      - application/json
+      description: 仅作者或管理员可修改委托的标题、内容、截止时间、金币、信用等级。图片请用单独接口管理。(正在进行/已结束的委托不能修改)
+      parameters:
+      - description: 委托ID
+        format: int64
+        in: path
+        name: entrust_id
+        required: true
+        type: integer
+      - description: 修改请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.UpdateEntrustRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.UpdateEntrustResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 修改委托
       tags:
       - 委托
   /app/entrust/accept:
@@ -1315,6 +1616,40 @@ paths:
       summary: 获取二维码信息
       tags:
       - 委托二维码
+  /app/entrust/image/delete:
+    post:
+      consumes:
+      - application/json
+      description: 仅作者或管理员可删除委托图片，同时删除数据库记录和本地文件。(正在进行/已结束的委托不能修改)
+      parameters:
+      - description: 删除请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.DeleteEntrustImageRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.DeleteEntrustImageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 删除委托图片
+      tags:
+      - 委托
   /app/entrust/like:
     post:
       consumes:
@@ -1633,6 +1968,45 @@ paths:
       summary: 获取帖子
       tags:
       - 帖子
+    patch:
+      consumes:
+      - application/json
+      description: 仅作者或管理员可修改帖子的标题和内容，图片请用单独接口管理
+      parameters:
+      - description: 帖子ID
+        format: int64
+        in: path
+        name: post_id
+        required: true
+        type: integer
+      - description: 修改请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.UpdatePostRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.UpdatePostResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 修改帖子
+      tags:
+      - 帖子
   /app/post/comment:
     get:
       consumes:
@@ -1868,6 +2242,40 @@ paths:
       summary: 删帖
       tags:
       - 帖子
+  /app/post/image/delete:
+    post:
+      consumes:
+      - application/json
+      description: 仅作者或管理员可删除帖子图片，同时删除数据库记录和本地文件
+      parameters:
+      - description: 删除请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.DeletePostImageRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.DeletePostImageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 删除帖子图片
+      tags:
+      - 帖子
   /app/post/like:
     post:
       consumes:
@@ -2094,7 +2502,7 @@ paths:
     post:
       consumes:
       - multipart/form-data
-      description: 拿图片文件列表遍历访问我 注意！！那个image是string类型是错的应该为file文件
+      description: 拿图片文件列表遍历访问我 注意！！那个image是string类型是错的应该为file文件 (正在进行/已结束的委托不能修改)
       parameters:
       - description: 上传自定义图片表单
         in: body
@@ -2276,6 +2684,131 @@ paths:
       summary: 获取用户帖子
       tags:
       - 帖子
+  /app/user/adjust-coin:
+    post:
+      consumes:
+      - application/json
+      description: 仅管理员可调用，amount>0 增加金币，amount<0 扣除金币
+      parameters:
+      - description: 信用金币调整请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.AdjustCreditCoinRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.AdjustCreditCoinResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 管理员调整用户信用金币
+      tags:
+      - 用户
+  /app/user/adjust-credit:
+    post:
+      consumes:
+      - application/json
+      description: 仅管理员可调用，amount>0 加分，amount<0 减分，信用分最低为0
+      parameters:
+      - description: 信用分调整请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.AdjustCreditScoreRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.AdjustCreditScoreResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 管理员调整用户信用分
+      tags:
+      - 用户
+  /app/user/ban:
+    post:
+      consumes:
+      - application/json
+      description: 仅管理员可调用，设置目标用户的封禁状态。注意：不能封禁其他管理员（除非是超级管理员）
+      parameters:
+      - description: 封禁操作请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.BanRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.BanResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 管理员封禁或解封用户
+      tags:
+      - 用户
+  /app/user/check-in:
+    get:
+      consumes:
+      - application/json
+      description: 用户每日签到，每人每天限签一次，签到成功金币+1
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.CheckInResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 用户每日签到
+      tags:
+      - 用户
   /app/user/edit:
     post:
       consumes:
@@ -2310,7 +2843,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: 除了ID和用户名和密码和头像(不在这里改)改不了其他都能改
+      description: 除了ID和用户名和密码和头像和权限和信用分和信用金币(不在这里改)改不了其他都能改
       parameters:
       - description: 修改其他用户数值信息
         in: body
@@ -2357,6 +2890,40 @@ paths:
           schema:
             $ref: '#/definitions/handlers.ErrorResponse'
       summary: 获取用户信息
+      tags:
+      - 用户
+  /app/user/update-permission:
+    post:
+      consumes:
+      - application/json
+      description: 仅超级管理员可调用，用于授予或撤销管理员权限
+      parameters:
+      - description: 权限修改请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.UpdatePermissionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.UpdatePermissionResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 超级管理员修改用户权限
       tags:
       - 用户
 schemes:

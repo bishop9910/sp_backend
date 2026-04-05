@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sp_backend/config"
 	"sp_backend/enums"
 	"sp_backend/models"
 	"sp_backend/repository"
@@ -82,6 +83,7 @@ type NewEntrustRequest struct {
 	Title                   string                 `json:"title"`
 	Content                 string                 `json:"content"`
 	AllowedCreditScoreLevel enums.CreditScoreLevel `json:"allowed_credit_score_level"`
+	OverTime                time.Time              `json:"over_time"`
 	CreditCoin              int                    `json:"coin"`
 }
 
@@ -139,12 +141,27 @@ func (h *EntrustHandler) NewEnturst(c *gin.Context) {
 		return
 	}
 
+	if req.CreditCoin < 10 || req.CreditCoin > 50 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "非法金币数值,必须为10-50",
+		})
+		return
+	}
+
+	if req.OverTime.IsZero() {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "未设置委托截止时间",
+		})
+		return
+	}
+
 	newEntrust := &models.CommunityEntrust{
 		UserID:                  UserID,
 		Title:                   req.Title,
 		Content:                 req.Content,
 		AllowedCreditScoreLevel: req.AllowedCreditScoreLevel,
 		CreditCoin:              req.CreditCoin,
+		OverTime:                req.OverTime,
 	}
 
 	if err := h.entrustRepo.Create(newEntrust); err != nil {
@@ -184,7 +201,7 @@ type AddEntrustImageResponse struct {
 
 // AddEntrustImage 给委托添加图片
 // @Summary      添加图片
-// @Description  拿图片文件列表遍历访问我 注意！！那个image是string类型是错的应该为file文件
+// @Description  拿图片文件列表遍历访问我 注意！！那个image是string类型是错的应该为file文件 (正在进行/已结束的委托不能修改)
 // @Tags         委托
 // @Accept       multipart/form-data
 // @Produce      json
@@ -230,6 +247,22 @@ func (h *EntrustHandler) AddEntrustImage(c *gin.Context) {
 	if entrust.UserID != user.ID && user.Permission != enums.AdminPermission {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot edit other's entrust"})
 		c.Abort()
+		return
+	}
+
+	authorUser, err := h.userRepo.GetByID(entrust.UserID)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid user"})
+		return
+	}
+
+	if authorUser.Permission == enums.AdminPermission && !config.IsSuperAdmin(user.Username) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "permission denied: only super admin can edit"})
+		return
+	}
+
+	if entrust.IsProgressing || entrust.IsOver {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot modify processing or completed entrust"})
 		return
 	}
 
@@ -690,6 +723,14 @@ func (h *EntrustHandler) LikeEntrust(c *gin.Context) {
 		return
 	}
 
+	entrust, err := h.entrustRepo.GetByID(req.EntrustID)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "entrust not found"})
+		c.Abort()
+		return
+	}
+	h.userRepo.AddCreditCoin(entrust.UserID, 1)
+
 	c.JSON(http.StatusOK, LikeEntrustResponse{
 		Success: true,
 		Message: "点赞成功",
@@ -751,6 +792,14 @@ func (h *EntrustHandler) UnlikeEntrust(c *gin.Context) {
 		})
 		return
 	}
+
+	entrust, err := h.entrustRepo.GetByID(req.EntrustID)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "entrust not found"})
+		c.Abort()
+		return
+	}
+	h.userRepo.DivCreditCoin(entrust.UserID, 1)
 
 	c.JSON(http.StatusOK, UnlikeEntrustResponse{
 		Success: true,
@@ -1095,6 +1144,14 @@ func (h *EntrustHandler) LikeEntrustComment(c *gin.Context) {
 		return
 	}
 
+	entrustComment, err := h.entrustCommentRepo.GetByID(req.CommentID)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "entrust not found"})
+		c.Abort()
+		return
+	}
+	h.userRepo.AddCreditCoin(entrustComment.UserID, 1)
+
 	c.JSON(http.StatusOK, LikeEntrustCommentResponse{
 		Success: true,
 		Message: "点赞成功",
@@ -1156,6 +1213,14 @@ func (h *EntrustHandler) UnlikeEntrustComment(c *gin.Context) {
 		})
 		return
 	}
+
+	entrustComment, err := h.entrustCommentRepo.GetByID(req.CommentID)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "entrust not found"})
+		c.Abort()
+		return
+	}
+	h.userRepo.DivCreditCoin(entrustComment.UserID, 1)
 
 	c.JSON(http.StatusOK, UnlikeEntrustCommentResponse{
 		Success: true,
@@ -1592,6 +1657,27 @@ func (h *EntrustHandler) VerifyQRCode(c *gin.Context) {
 		return
 	}
 
+	currentScore, err := h.userRepo.GetCreditScore(req.AcceptorID)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "验证错误",
+		})
+		c.Abort()
+		return
+	}
+
+	newScore := currentScore + 5
+	err = h.userRepo.Update(&models.AppUser{
+		CreditScore: newScore,
+	})
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "验证错误",
+		})
+		c.Abort()
+		return
+	}
+
 	c.JSON(http.StatusOK, VerifyQRCodeResponse{
 		Success: true,
 		Message: "验证成功",
@@ -1720,6 +1806,304 @@ func (h *EntrustHandler) CheckEntrustCommentLikeStatus(c *gin.Context) {
 		Message: "查询成功",
 		Data: LikeStatusData{
 			IsLiked: isLiked,
+		},
+	})
+}
+
+func (h *EntrustHandler) CheckEntrustIsExpire() {
+	expiredEntrusts, err := h.entrustRepo.FindEntrustIsExpire()
+	if err != nil {
+		return
+	}
+
+	for i := range expiredEntrusts {
+		if !expiredEntrusts[i].IsOver {
+			expiredEntrusts[i].IsOver = true
+		}
+		if !expiredEntrusts[i].IsExpired {
+			expiredEntrusts[i].IsExpired = true
+			h.userRepo.DivCreditCoin(*expiredEntrusts[i].AcceptorID, 15)
+		}
+	}
+
+	fmt.Print("Checked Expire...\n")
+}
+
+// DeleteEntrustImageRequest 删除图片请求
+type DeleteEntrustImageRequest struct {
+	ImageID uint64 `json:"image_id" binding:"required"`
+}
+
+// DeleteEntrustImageResponse 删除图片响应
+type DeleteEntrustImageResponse struct {
+	Success bool   `json:"success" example:"true"`
+	Message string `json:"message"`
+}
+
+// DeleteEntrustImage 删除委托关联的图片
+// @Summary      删除委托图片
+// @Description  仅作者或管理员可删除委托图片，同时删除数据库记录和本地文件。(正在进行/已结束的委托不能修改)
+// @Tags         委托
+// @Accept       json
+// @Produce      json
+// @Param        request  body  DeleteEntrustImageRequest  true  "删除请求"
+// @Success      200  {object} DeleteEntrustImageResponse
+// @Failure      400  {object} ErrorResponse
+// @Failure      401  {object} ErrorResponse
+// @Failure      403  {object} ErrorResponse
+// @Router       /app/entrust/image/delete [post]
+func (h *EntrustHandler) DeleteEntrustImage(c *gin.Context) {
+	var req DeleteEntrustImageRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		return
+	}
+
+	// 1. 获取当前用户
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+	currentUID := userID.(uint64)
+
+	// 2. 查询图片记录
+	image, err := h.entrustImageRepo.GetByID(req.ImageID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "image not found"})
+		return
+	}
+
+	// 3. 查询委托 + 权限校验
+	entrust, err := h.entrustRepo.GetByID(image.EntrustID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "entrust not found"})
+		return
+	}
+
+	currentUser, err := h.userRepo.GetByID(currentUID)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid user"})
+		return
+	}
+
+	if entrust.UserID != currentUser.ID && currentUser.Permission != enums.AdminPermission {
+		c.JSON(http.StatusForbidden, gin.H{"error": "permission denied"})
+		return
+	}
+
+	authorUser, err := h.userRepo.GetByID(entrust.UserID)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid user"})
+		return
+	}
+
+	if authorUser.Permission == enums.AdminPermission && !config.IsSuperAdmin(currentUser.Username) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "permission denied: only super admin can edit"})
+		return
+	}
+
+	if entrust.IsProgressing || entrust.IsOver {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot modify processing or completed entrust"})
+		return
+	}
+
+	// 4. 删除本地文件
+	parts := strings.Split(image.ImageURL, "/")
+	filename := parts[len(parts)-1]
+	if err := utils.DeleteImageFile(filename, h.entrustImageConfig.imageDir); err != nil {
+		log.Printf("[DeleteEntrustImage] delete file failed: %v", err)
+		// 文件删除失败不中断，继续删数据库记录
+	}
+
+	// 5. 删除数据库记录
+	if err := h.entrustImageRepo.Delete(req.ImageID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete image record"})
+		return
+	}
+
+	c.JSON(http.StatusOK, DeleteEntrustImageResponse{
+		Success: true,
+		Message: "image deleted successfully",
+	})
+}
+
+// UpdateEntrustRequest 修改委托请求（文本+配置字段）
+type UpdateEntrustRequest struct {
+	Title                   *string                 `json:"title,omitempty"`                                  // 可选
+	Content                 *string                 `json:"content,omitempty"`                                // 可选
+	OverTime                *time.Time              `json:"over_time,omitempty"`                              // 可选
+	CreditCoin              *int                    `json:"coin,omitempty" binding:"omitempty,min=10,max=50"` // 可选，10-50
+	AllowedCreditScoreLevel *enums.CreditScoreLevel `json:"allowed_credit_score_level,omitempty"`             // 可选
+}
+
+// UpdateEntrustResponse 修改委托响应
+type UpdateEntrustResponse struct {
+	Success bool   `json:"success" example:"true"`
+	Message string `json:"message"`
+	Data    struct {
+		EntrustID uint64 `json:"entrust_id"`
+		UpdatedAt string `json:"updated_at"`
+	} `json:"data,omitempty"`
+}
+
+// UpdateEntrust 修改委托（标题/内容/时间/金币/信用等级）
+// @Summary      修改委托
+// @Description  仅作者或管理员可修改委托的标题、内容、截止时间、金币、信用等级。图片请用单独接口管理。(正在进行/已结束的委托不能修改)
+// @Tags         委托
+// @Accept       json
+// @Produce      json
+// @Param        entrust_id  path    uint64              true  "委托ID"
+// @Param        request     body    UpdateEntrustRequest true  "修改请求"
+// @Success      200         {object} UpdateEntrustResponse
+// @Failure      400         {object} ErrorResponse
+// @Failure      401         {object} ErrorResponse
+// @Failure      403         {object} ErrorResponse
+// @Router       /app/entrust/{entrust_id} [patch]
+func (h *EntrustHandler) UpdateEntrust(c *gin.Context) {
+	// 1. 解析路径参数
+	entrustID, err := strconv.ParseUint(c.Param("entrust_id"), 10, 64)
+	if err != nil || entrustID == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid entrust_id"})
+		return
+	}
+
+	// 2. 解析请求体
+	var req UpdateEntrustRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body: " + err.Error()})
+		return
+	}
+
+	// 至少修改一个字段
+	if req.Title == nil && req.Content == nil && req.OverTime == nil &&
+		req.CreditCoin == nil && req.AllowedCreditScoreLevel == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "no fields to update"})
+		return
+	}
+
+	// 3. 获取当前用户
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+	currentUID := userID.(uint64)
+
+	// 4. 查询委托 + 权限校验
+	entrust, err := h.entrustRepo.GetByID(entrustID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "entrust not found"})
+		return
+	}
+
+	currentUser, err := h.userRepo.GetByID(currentUID)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid user"})
+		return
+	}
+
+	// 权限：作者 或 管理员
+	if entrust.UserID != currentUser.ID && currentUser.Permission != enums.AdminPermission {
+		c.JSON(http.StatusForbidden, gin.H{"error": "permission denied: only author or admin can edit"})
+		return
+	}
+
+	authorUser, err := h.userRepo.GetByID(entrust.UserID)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid user"})
+		return
+	}
+
+	if authorUser.Permission == enums.AdminPermission && !config.IsSuperAdmin(currentUser.Username) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "permission denied: only super admin can edit"})
+		return
+	}
+
+	// 业务规则：正在进行/已结束的委托不能修改
+	if entrust.IsProgressing || entrust.IsOver {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot modify processing or completed entrust"})
+		return
+	}
+
+	// 5. 构建更新字段（只更新非 nil 字段）
+	updates := make(map[string]interface{})
+
+	// Title
+	if req.Title != nil {
+		title := strings.TrimSpace(*req.Title)
+		if title == "" {
+			title = "未命名标题"
+		}
+		updates["title"] = title
+	}
+
+	// Content
+	if req.Content != nil {
+		content := strings.TrimSpace(*req.Content)
+		if content == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "content cannot be empty"})
+			return
+		}
+		if len(content) > 65535 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "content too long (max 65535 chars)"})
+			return
+		}
+		updates["content"] = content
+	}
+
+	// OverTime
+	if req.OverTime != nil {
+		if req.OverTime.IsZero() {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "over_time cannot be zero"})
+			return
+		}
+		if req.OverTime.Before(time.Now()) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "over_time cannot be in the past"})
+			return
+		}
+		updates["over_time"] = *req.OverTime
+	}
+
+	// CreditCoin
+	if req.CreditCoin != nil {
+		coin := *req.CreditCoin
+		if coin < 10 || coin > 50 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "credit coin must be between 10 and 50"})
+			return
+		}
+		updates["credit_coin"] = coin
+	}
+
+	// AllowedCreditScoreLevel
+	if req.AllowedCreditScoreLevel != nil {
+		level := *req.AllowedCreditScoreLevel
+		if level != enums.LevelGood && level != enums.LevelMidium && level != enums.LevelDanger {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid credit score level"})
+			return
+		}
+		updates["allowed_credit_score_level"] = level
+	}
+
+	updates["updated_at"] = time.Now()
+
+	// 6. 执行更新
+	if err := h.entrustRepo.UpdateEntrustFields(entrustID, updates); err != nil {
+		log.Printf("[UpdateEntrust] update failed: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "update failed"})
+		return
+	}
+
+	// 7. 返回响应
+	c.JSON(http.StatusOK, UpdateEntrustResponse{
+		Success: true,
+		Message: "entrust updated successfully",
+		Data: struct {
+			EntrustID uint64 `json:"entrust_id"`
+			UpdatedAt string `json:"updated_at"`
+		}{
+			EntrustID: entrustID,
+			UpdatedAt: time.Now().Format(time.RFC3339),
 		},
 	})
 }

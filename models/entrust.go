@@ -17,6 +17,8 @@ type CommunityEntrust struct {
 	AllowedCreditScoreLevel enums.CreditScoreLevel `gorm:"type:int;not null" json:"allowed_credit_score_level"`
 	CreditCoin              int                    `gorm:"not null;" json:"credit_coin"`
 	CreateTime              time.Time              `gorm:"not null;autoCreateTime" json:"create_time"`
+	OverTime                time.Time              `gorm:"not null;" json:"over_time"`
+	IsExpired               bool                   `gorm:"not null;default:false" json:"is_expired"`
 	IsProgressing           bool                   `gorm:"not null;default:false" json:"is_progressing"`
 	IsOver                  bool                   `gorm:"not null;default:false" json:"is_over"`
 	Like_Count              uint64                 `gorm:"not null;default:0" json:"like_count"`
